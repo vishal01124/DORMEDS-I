@@ -890,11 +890,6 @@ const A = {
     <tr><td colspan="5" style="text-align:center;padding:28px;color:var(--mute)"><span class="material-icons-round spin" style="font-size:28px">autorenew</span></td></tr>
     </tbody></table></div></div>`;
   },
-    const aC={LOGIN_SUCCESS:'b-ok',LOGIN_FAILED:'b-err',LOGOUT:'b-gray',LOGOUT_ALL:'b-warn',REGISTER:'b-acc',PASSWORD_CHANGED:'b-warn',PASSWORD_RESET_SUCCESS:'b-warn',PASSWORD_RESET_REQUEST:'b-info',PHARMACY_CREATED:'b-ok',PHARMACY_UPDATED:'b-info',PHARMACY_DELETED:'b-err',SESSION_REVOKED:'b-warn'};
-    tbody.innerHTML=res.length===0
-      ?'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--mute)">No audit events yet.</td></tr>'
-      :res.map(l=>`<tr><td><span class="badge ${aC[l.action]||'b-gray'}" style="font-size:.72rem;white-space:nowrap">${l.action.replace(/_/g,' ')}</span></td><td style="font-family:monospace;font-size:.8rem;color:var(--acc)">${l.user_id}</td><td><span class="badge b-gray" style="font-size:.72rem">${l.role}</span></td><td style="font-size:.8rem;color:var(--txt2)">${l.details||'—'}</td><td style="font-size:.75rem;color:var(--mute);white-space:nowrap">${new Date(l.ts).toLocaleString('en-IN')}</td></tr>`).join('');
-  },
 };
 
 // Helpers
