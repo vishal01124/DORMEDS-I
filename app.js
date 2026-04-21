@@ -817,6 +817,69 @@ const A = {
     set('an-ord',res.totalOrders+' total orders');
   },
 
+  async loadAudit(){
+    const res=await apiGet('/audit-log');const tbody=Q('#audit-body');if(!tbody||!res)return;
+    const aC={LOGIN_SUCCESS:'b-ok',LOGIN_FAILED:'b-err',LOGOUT:'b-gray',LOGOUT_ALL:'b-warn',REGISTER:'b-acc',PASSWORD_CHANGED:'b-warn',ADMIN_PASSWORD_CHANGED:'b-warn',PASSWORD_RESET_SUCCESS:'b-warn',PASSWORD_RESET_REQUEST:'b-info',PHARMACY_CREATED:'b-ok',PHARMACY_UPDATED:'b-info',PHARMACY_DELETED:'b-err',SESSION_REVOKED:'b-warn',ADMIN_CREATED:'b-ok',ADMIN_DELETED:'b-err'};
+    tbody.innerHTML=res.length===0
+      ?'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--mute)">No audit events yet.</td></tr>'
+      :res.map(l=>`<tr><td><span class="badge ${aC[l.action]||'b-gray'}" style="font-size:.72rem;white-space:nowrap">${l.action.replace(/_/g,' ')}</span></td><td style="font-family:monospace;font-size:.8rem;color:var(--acc)">${l.user_id}</td><td><span class="badge b-gray" style="font-size:.72rem">${l.role}</span></td><td style="font-size:.8rem;color:var(--txt2)">${l.details||'—'}</td><td style="font-size:.75rem;color:var(--mute);white-space:nowrap">${new Date(l.ts).toLocaleString('en-IN')}</td></tr>`).join('');
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  //  ADMIN TEAM PAGE
+  // ═══════════════════════════════════════════════════════════
+  rAdminTeam(){
+    return`<div class="ph"><div class="pt"><h1>Admin Team</h1><p>Manage admin accounts. Only the super admin can create or remove admins.</p></div>
+    <button class="btn btn-p" onclick="A.showAddAdminModal()"><span class="material-icons-round">person_add</span>Add Admin</button></div>
+    <div class="card"><div class="ch"><h3><span class="material-icons-round" style="vertical-align:middle;margin-right:6px;font-size:18px">supervised_user_circle</span>Admin Accounts</h3><span class="badge b-info" id="adm-count"> </span></div>
+    <div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead>
+    <tbody id="adm-body"><tr><td colspan="5" style="text-align:center;padding:28px;color:var(--mute)"><span class="material-icons-round spin" style="font-size:28px">autorenew</span></td></tr></tbody></table></div></div>`;
+  },
+
+  async loadAdminTeam(){
+    const res=await apiGet('/admins');const tbody=Q('#adm-body');if(!tbody)return;
+    if(!res||!Array.isArray(res)){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--mute)">Unable to load admins.</td></tr>';return;}
+    const cnt=Q('#adm-count');if(cnt)cnt.textContent=res.length+' admin'+(res.length!==1?'s':'');
+    tbody.innerHTML=res.map(a=>`<tr>
+      <td><div style="font-weight:700;display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--acc),#00D48E);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.8rem">${a.name[0].toUpperCase()}</div>${a.name}</div></td>
+      <td style="font-size:.85rem;color:var(--mute)">${a.email}</td>
+      <td>${a.is_super?'<span class="badge b-ok">Super Admin</span>':'<span class="badge b-info">Admin</span>'}</td>
+      <td style="font-size:.8rem;color:var(--mute)">${new Date(a.created_at).toLocaleDateString('en-IN')}</td>
+      <td>${!a.is_super?`<button class="btn btn-sm btn-er" onclick="A.deleteAdmin('${a.id}','${a.name}')"><span class="material-icons-round">delete</span>Remove</button>`:'<span style="color:var(--mute);font-size:.8rem">Protected</span>'}</td>
+    </tr>`).join('');
+  },
+
+  showAddAdminModal(){
+    this.showModal('Add New Admin',
+      `<div class="ai info" style="margin-bottom:14px"><span class="material-icons-round ai-icon">info</span><div class="ai-txt"><strong>Admin Account</strong><span>This admin will have full access to manage pharmacies, orders and billing.</span></div></div>
+      <div class="fr"><div class="fg"><label>Full Name *</label><input id="an-name" placeholder="e.g. Rahul Kumar" autocomplete="off"></div>
+      <div class="fg"><label>Email *</label><input id="an-email" type="email" placeholder="admin@company.com" autocomplete="off"></div></div>
+      <div class="fg pwrap"><label>Password * <span style="font-size:.72rem;color:var(--mute)">(min 8 chars)</span></label>
+      <input id="an-pw" type="password" placeholder="Strong password"><button class="pw-toggle" onclick="A.togglePw('an-pw',this)"><span class="material-icons-round">visibility</span></button></div>`,
+      `<button class="btn btn-s" onclick="A.closeModal()">Cancel</button>
+      <button class="btn btn-p" id="an-btn" onclick="A.createAdmin()"><span class="material-icons-round">check</span>Create Admin</button>`
+    );
+  },
+
+  async createAdmin(){
+    const name=Q('#an-name')?.value.trim(),email=Q('#an-email')?.value.trim(),pw=Q('#an-pw')?.value;
+    if(!name||!email||!pw){this.toast('All fields are required','err');return;}
+    if(pw.length<8){this.toast('Password must be at least 8 characters','err');return;}
+    const btn=Q('#an-btn');if(btn){btn.disabled=true;btn.innerHTML='<span class="material-icons-round spin">autorenew</span>Creating…';}
+    const res=await apiPost('/admins',{name,email,password:pw});
+    if(btn){btn.disabled=false;btn.innerHTML='<span class="material-icons-round">check</span>Create Admin';}
+    if(!res){this.toast('Server error','err');return;}
+    if(res.ok){this.toast(res.msg||'Admin created!','ok');this.closeModal();this.loadAdminTeam();}
+    else{this.toast(res.msg||'Failed to create admin','err');}
+  },
+
+  async deleteAdmin(id,name){
+    if(!confirm(`Remove admin "${name}"? They will be signed out immediately.`))return;
+    const res=await apiDel('/admins/'+id);
+    if(res?.ok){this.toast('Admin removed','ok');this.loadAdminTeam();}
+    else{this.toast(res?.msg||'Failed to remove admin','err');}
+  },
+
   // ═══════════════════════════════════════════════════════════
   //  AUDIT LOG PAGE (Admin Only)
   // ═══════════════════════════════════════════════════════════
@@ -827,9 +890,6 @@ const A = {
     <tr><td colspan="5" style="text-align:center;padding:28px;color:var(--mute)"><span class="material-icons-round spin" style="font-size:28px">autorenew</span></td></tr>
     </tbody></table></div></div>`;
   },
-
-  async loadAudit(){
-    const res=await apiGet('/audit-log');const tbody=Q('#audit-body');if(!tbody||!res)return;
     const aC={LOGIN_SUCCESS:'b-ok',LOGIN_FAILED:'b-err',LOGOUT:'b-gray',LOGOUT_ALL:'b-warn',REGISTER:'b-acc',PASSWORD_CHANGED:'b-warn',PASSWORD_RESET_SUCCESS:'b-warn',PASSWORD_RESET_REQUEST:'b-info',PHARMACY_CREATED:'b-ok',PHARMACY_UPDATED:'b-info',PHARMACY_DELETED:'b-err',SESSION_REVOKED:'b-warn'};
     tbody.innerHTML=res.length===0
       ?'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--mute)">No audit events yet.</td></tr>'
