@@ -28,7 +28,9 @@ const pool = new Pool({
 });
 
 // ── JWT Config ────────────────────────────────────────────────
-const JWT_SECRET = process.env.JWT_SECRET || 'pharmadist_jwt_secret_2026_change_in_production!';
+const JWT_SECRET    = process.env.JWT_SECRET    || 'pharmadist_jwt_secret_2026_change_in_production!';
+const ADMIN_EMAIL   = process.env.ADMIN_EMAIL   || 'admin@pharmadist.com';
+const ADMIN_PASSWORD= process.env.ADMIN_PASSWORD|| 'admin123';
 
 // ── Middleware ────────────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
@@ -333,7 +335,7 @@ app.post('/api/login', async (req, res) => {
 
   let userData;
   if (role === 'admin') {
-    if (em === 'admin@pharmadist.com' && pw === 'admin123') {
+    if (em === ADMIN_EMAIL.toLowerCase() && pw === ADMIN_PASSWORD) {
       userData = { id: 'admin', name: 'Admin', email: em, role: 'admin', init: 'AD' };
     } else {
       await auditLog('LOGIN_FAILED', em, 'admin', 'Wrong credentials');
