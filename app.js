@@ -7,7 +7,7 @@
 // ── 🔧 SET YOUR RAILWAY URL HERE (after deploying) ───────────
 //  Example: 'https://pharmadist-pro.up.railway.app'
 //  Leave as '' to use demo mode on GitHub Pages
-const RAILWAY_URL = '';
+const RAILWAY_URL = 'https://web-production-e4fbb.up.railway.app';
 // ─────────────────────────────────────────────────────────────
 
 const API = (() => {
