@@ -3,10 +3,21 @@
 //  Server Mode: Full JWT auth via backend API
 //  Demo Mode:   localStorage (GitHub Pages / offline)
 // ============================================================
+
+// ── 🔧 SET YOUR RAILWAY URL HERE (after deploying) ───────────
+//  Example: 'https://pharmadist-pro.up.railway.app'
+//  Leave as '' to use demo mode on GitHub Pages
+const RAILWAY_URL = '';
+// ─────────────────────────────────────────────────────────────
+
 const API = (() => {
   const loc = window.location;
-  if (loc.hostname === 'localhost' || loc.hostname === '127.0.0.1') return loc.origin + '/api';
-  return null;
+  // Localhost → use local server
+  if (loc.hostname === 'localhost' || loc.hostname === '127.0.0.1')
+    return loc.origin + '/api';
+  // GitHub Pages → use Railway if configured, else demo mode
+  if (RAILWAY_URL) return RAILWAY_URL.replace(/\/$/, '') + '/api';
+  return null;  // → demo mode
 })();
 let _demoMode = false;
 
