@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  PharmaDist Pro — Frontend App (Dual Mode)
 //  Server Mode: Full JWT auth via backend API
 //  Demo Mode:   localStorage (GitHub Pages / offline)
@@ -918,6 +918,16 @@ const A = {
       this.render();
     },1500);
   },
+
+  async saveDistSettings(){
+    const d={name:Q('#ds-name')?.value.trim(),phone:Q('#ds-phone')?.value.trim(),email:Q('#ds-email')?.value.trim(),upi:Q('#ds-upi')?.value.trim(),gst:Q('#ds-gst')?.value.trim(),license:Q('#ds-lic')?.value.trim(),address:Q('#ds-addr')?.value.trim()};
+    // Remove empty values
+    Object.keys(d).forEach(k=>{if(!d[k])delete d[k];});
+    const res=await apiPost('/dist-settings',d);
+    if(res?.ok){Object.assign(this.data.dist,d);this.toast('Settings saved! UPI: '+this.data.dist.upi,'ok');}
+    else{this.toast('Failed to save settings – check server','err');}
+  },
+
 
   // ═══════════════════════════════════════════════════════════
   //  SAAS ANALYTICS PAGE (Admin Only)
