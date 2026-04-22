@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  PharmaDist Pro — Frontend App (Dual Mode)
 //  Server Mode: Full JWT auth via backend API
 //  Demo Mode:   localStorage (GitHub Pages / offline)
@@ -317,7 +317,7 @@ const A = {
     const el=Q('#pc');if(!el)return;
     const pg=this.st.page,role=this.st.role;
     const mp={
-      admin:{dashboard:()=>this.rAdminDash(),pharmacies:()=>this.rPharmacies(),documentation:()=>this.rAdminDocs(),orders:()=>this.rAdminOrders(),subscriptions:()=>this.rSubs(),billing:()=>this.rAdminBilling(),returns:()=>this.rAdminReturns(),support:()=>this.rAdminSupport(),analytics:()=>this.rAnalytics(),audit:()=>this.rAudit(),admins:()=>this.rAdminTeam(),products:()=>this.rAdminProducts(),profile:()=>this.rProfile()},
+      admin:{dashboard:()=>this.rAdminDash(),pharmacies:()=>this.rPharmacies(),'dist-inventory':()=>'<div class="loading-page" style="display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:14px"><span class="material-icons-round" style="font-size:48px;color:var(--acc);animation:spin 1s linear infinite">refresh</span><p style="color:var(--mute)">Loading stock...</p></div>',documentation:()=>this.rAdminDocs(),orders:()=>this.rAdminOrders(),subscriptions:()=>this.rSubs(),billing:()=>this.rAdminBilling(),returns:()=>this.rAdminReturns(),support:()=>this.rAdminSupport(),analytics:()=>this.rAnalytics(),audit:()=>this.rAudit(),admins:()=>this.rAdminTeam(),products:()=>this.rAdminProducts(),profile:()=>this.rProfile()},
       pharmacy:{dashboard:()=>this.rPhDash(),inventory:()=>this.rInventory(),catalog:()=>this.rPhCatalog(),orders:()=>this.rPhOrders(),documentation:()=>this.rPhDocs(),billing:()=>this.rPhBilling(),subscriptions:()=>this.rPhSubs(),returns:()=>this.rPhReturns(),support:()=>this.rPhSupport(),profile:()=>this.rProfile()}
     };
     el.innerHTML=(mp[role]?.[pg]||mp[role]?.dashboard)();
@@ -328,6 +328,7 @@ const A = {
       if(pg==='audit'&&role==='admin')this.loadAudit();
       if(pg==='admins'&&role==='admin')this.loadAdminTeam();
       if(pg==='products'&&role==='admin')this.loadAdminProducts();
+      if(pg==='dist-inventory'&&role==='admin')this.loadDistInventory();
       if(pg==='catalog'&&role==='pharmacy')this.loadPhCatalog();
     },50);
   },
@@ -412,7 +413,7 @@ const A = {
   navAdmin(){
     const d=this.data;const po=d.orders.filter(o=>o.type==='inventory'&&o.status==='pending').length;const pr=d.returns.filter(r=>r.status==='pending').length;const ub=d.bills.filter(b=>b.status==='unpaid').length;
     const isSuper=this.st.user?.isSuper;
-    return this.navSec('Overview',[{p:'dashboard',i:'dashboard',l:'Dashboard'},{p:'pharmacies',i:'storefront',l:'Pharmacies'}])+this.navSec('Catalog',[{p:'products',i:'inventory_2',l:'Products Catalog'}])+this.navSec('Operations',[{p:'documentation',i:'description',l:'Documentation'},{p:'orders',i:'shopping_cart',l:'Orders',b:po||undefined}])+this.navSec('Finance',[{p:'subscriptions',i:'card_membership',l:'Subscriptions'},{p:'billing',i:'receipt_long',l:'Billing',b:ub||undefined},{p:'returns',i:'assignment_return',l:'Returns',b:pr||undefined}])+this.navSec('Help',[{p:'support',i:'support_agent',l:'Support'}])+this.navSec('Admin',[{p:'analytics',i:'bar_chart',l:'SaaS Analytics'},{p:'audit',i:'security',l:'Audit Log'},...(isSuper?[{p:'admins',i:'supervised_user_circle',l:'Admin Team'}]:[]),{p:'profile',i:'manage_accounts',l:'My Account'}]);
+    return this.navSec('Overview',[{p:'dashboard',i:'dashboard',l:'Dashboard'},{p:'dist-inventory',i:'inventory_2',l:'My Stock'},{p:'pharmacies',i:'storefront',l:'Pharmacies'}])+this.navSec('Catalog',[{p:'products',i:'inventory_2',l:'Products Catalog'}])+this.navSec('Operations',[{p:'documentation',i:'description',l:'Documentation'},{p:'orders',i:'shopping_cart',l:'Orders',b:po||undefined}])+this.navSec('Finance',[{p:'subscriptions',i:'card_membership',l:'Subscriptions'},{p:'billing',i:'receipt_long',l:'Billing',b:ub||undefined},{p:'returns',i:'assignment_return',l:'Returns',b:pr||undefined}])+this.navSec('Help',[{p:'support',i:'support_agent',l:'Support'}])+this.navSec('Admin',[{p:'analytics',i:'bar_chart',l:'SaaS Analytics'},{p:'audit',i:'security',l:'Audit Log'},...(isSuper?[{p:'admins',i:'supervised_user_circle',l:'Admin Team'}]:[]),{p:'profile',i:'manage_accounts',l:'My Account'}]);
   },
   navPh(){
     const phId=this.st.user.phId;const d=this.data;
@@ -593,7 +594,7 @@ const A = {
   vBill(id){
     const b=this.data.bills.find(b=>b.id===id);if(!b)return;
     this.showModal('Bill – '+b.id,`<div style="font-family:monospace;background:var(--inp);border:1px solid var(--bdr);border-radius:var(--r);padding:20px"><div style="display:flex;justify-content:space-between;margin-bottom:20px"><div><div style="font-size:1.25rem;font-weight:800;color:var(--acc)">PharmaDist Pro</div><div style="font-size:.8rem;color:var(--txt2)">${this.data.dist.address}</div><div style="font-size:.8rem;color:var(--txt2)">GST: ${this.data.dist.gst}</div></div><div style="text-align:right"><div style="font-size:1.25rem;font-weight:800">TAX INVOICE</div><div style="color:var(--mute)">${b.id}</div><div style="margin-top:4px">${b.status==='paid'?'<span class="badge b-ok" style="font-size:.875rem">PAID</span>':'<span class="badge b-err" style="font-size:.875rem">UNPAID</span>'}</div></div></div><div style="border-top:1px solid var(--bdr);padding-top:14px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Billed To:</span><span style="font-weight:700">${b.phName}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Date:</span><span>${b.date}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Due:</span><span>${b.due}</span></div>${b.paid?`<div style="display:flex;justify-content:space-between"><span>Paid on:</span><span style="color:var(--ok)">${b.paid}</span></div>`:''}</div><div style="text-align:right;font-size:1.5rem;font-weight:800;color:var(--acc)">Total: ₹${this.fmt(b.amt)}</div></div>`,
-    `<button class="btn btn-s" onclick="A.closeModal()">Close</button><button class="btn btn-s" onclick="A.printBill('${b.id}')"><span class="material-icons-round">print</span>Print</button>${b.status==='unpaid'?`<button class="btn btn-ok" onclick="A.closeModal();A.markPaid('${b.id}')">Mark Paid</button>`:''}${b.status==='pending_verification'?`<div style="margin-bottom:10px;padding:10px;background:rgba(255,181,71,.1);border:1px solid var(--warn);border-radius:8px;font-size:.875rem"><strong>UTR:</strong> ${b.utr||'—'} <span class="badge b-gray" style="margin-left:6px">${b.payMethod||'UPI'}</span></div><button class="btn btn-ok" onclick="A.closeModal();A.verifyPayment('${b.id}')"><span class="material-icons-round">verified</span>Confirm Payment</button>`:''}`)
+    `<button class="btn btn-s" onclick="A.closeModal()">Close</button><button class="btn btn-sm btn-s" onclick="A.shareBillWA('${b.id}')"><span class="material-icons-round">share</span>WhatsApp</button><button class="btn btn-sm btn-s" onclick="A.shareBillWA('${b.id}')"><span class="material-icons-round">share</span>WhatsApp</button><button class="btn btn-s" onclick="A.printBill('${b.id}')"><span class="material-icons-round">print</span>Print</button>${b.status==='unpaid'?`<button class="btn btn-ok" onclick="A.closeModal();A.markPaid('${b.id}')">Mark Paid</button>`:''}${b.status==='pending_verification'?`<div style="margin-bottom:10px;padding:10px;background:rgba(255,181,71,.1);border:1px solid var(--warn);border-radius:8px;font-size:.875rem"><strong>UTR:</strong> ${b.utr||'—'} <span class="badge b-gray" style="margin-left:6px">${b.payMethod||'UPI'}</span></div><button class="btn btn-ok" onclick="A.closeModal();A.verifyPayment('${b.id}')"><span class="material-icons-round">verified</span>Confirm Payment</button>`:''}`)
   },
 
   // ===== ADMIN RETURNS =====
@@ -893,6 +894,15 @@ const A = {
     else{this.toast(res.msg||'Reset failed','err');}
   },
 
+  async changeAdminPw(){
+    const cur=Q('#cp-cur')?.value,np=Q('#cp-new')?.value,cf=Q('#cp-cf')?.value;
+    if(!cur||!np||!cf){this.toast('Fill all fields','err');return;}
+    if(np!==cf){this.toast('Passwords do not match','err');return;}
+    if(np.length<8){this.toast('Min 8 characters','err');return;}
+    const res=await apiPost('/admin/change-password',{currentPassword:cur,newPassword:np});
+    if(res?.ok){this.toast('✔ Password changed!','ok');Q('#cp-cur').value='';Q('#cp-new').value='';Q('#cp-cf').value='';}
+    else{this.toast(res?.msg||'Failed – wrong current password','err');}
+  },
   pwStrength(pw,fillId='ps-fill'){
     const fill=Q('#'+fillId);if(!fill)return;
     let s=0;
@@ -933,7 +943,7 @@ const A = {
     <div style="padding:12px;background:var(--inp);border-radius:var(--rs);border:1px solid var(--bdr)"><div style="font-size:.72rem;color:var(--mute);margin-bottom:4px;text-transform:uppercase">Security Tip</div><div style="font-size:.8rem;color:var(--txt2)">Set <code style="background:rgba(108,99,255,.15);padding:1px 6px;border-radius:4px">JWT_SECRET</code> environment variable before deploying to production.</div></div>
     </div></div>`}
     </div>
-    ${isAdmin?`<div class="card" style="margin-top:14px"><div class="ch"><h3><span class="material-icons-round" style="vertical-align:middle;margin-right:6px;font-size:18px">storefront</span>Distributor Settings</h3><span class="badge b-ok">Admin Only</span></div><div class="cb"><div class="fr"><div class="fg"><label>Company Name</label><input id="ds-name" value="${this.data.dist.name||''}"></div><div class="fg"><label>Phone / Support</label><input id="ds-phone" value="${this.data.dist.phone||''}"></div></div><div class="fr"><div class="fg"><label>Email</label><input id="ds-email" value="${this.data.dist.email||''}"></div><div class="fg"><label>UPI ID <span style='color:var(--acc);font-size:.75rem'>★ For QR payments</span></label><input id="ds-upi" placeholder="e.g. yourname@okicici" value="${this.data.dist.upi||''}"></div></div><div class="fr"><div class="fg"><label>GST Number</label><input id="ds-gst" value="${this.data.dist.gst||''}"></div><div class="fg"><label>License No.</label><input id="ds-lic" value="${this.data.dist.license||''}"></div></div><div class="fg"><label>Address</label><textarea id="ds-addr" style="min-height:60px">${this.data.dist.address||''}</textarea></div><button class="btn btn-p" onclick="A.saveDistSettings()"><span class="material-icons-round">save</span>Save Settings</button></div></div>`:''}
+    ${isAdmin?`<div class="card" style="margin-top:14px"><div class="ch"><h3><span class="material-icons-round" style="vertical-align:middle;margin-right:6px;font-size:18px">lock_reset</span>Change Password</h3></div><div class="cb"><div class="fr"><div class="fg"><label>Current Password</label><input id="cp-cur" type="password" autocorrect="off" autocapitalize="none" placeholder="Current password"></div><div class="fg"><label>New Password</label><input id="cp-new" type="password" autocorrect="off" autocapitalize="none" placeholder="Min 8 chars" oninput="A.pwStrength(this.value,'cp-fill')"></div></div><div id="ps-bar-cp" style="height:4px;border-radius:2px;background:var(--bdr);margin:-12px 0 14px;overflow:hidden"><div id="cp-fill" style="height:100%;width:0;transition:width .3s,background .3s"></div></div><div class="fg"><label>Confirm New Password</label><input id="cp-cf" type="password" autocorrect="off" autocapitalize="none" placeholder="Repeat new password"></div><button class="btn btn-p" onclick="A.changeAdminPw()"><span class="material-icons-round">lock</span>Change Password</button></div></div><div class="card" style="margin-top:14px"><div class="ch"><h3><span class="material-icons-round" style="vertical-align:middle;margin-right:6px;font-size:18px">storefront</span>Distributor Settings</h3><span class="badge b-ok">Admin Only</span></div><div class="cb"><div class="fr"><div class="fg"><label>Company Name</label><input id="ds-name" value="${this.data.dist.name||''}"></div><div class="fg"><label>Phone / Support</label><input id="ds-phone" value="${this.data.dist.phone||''}"></div></div><div class="fr"><div class="fg"><label>Email</label><input id="ds-email" value="${this.data.dist.email||''}"></div><div class="fg"><label>UPI ID <span style='color:var(--acc);font-size:.75rem'>★ For QR payments</span></label><input id="ds-upi" placeholder="e.g. yourname@okicici" value="${this.data.dist.upi||''}"></div></div><div class="fr"><div class="fg"><label>GST Number</label><input id="ds-gst" value="${this.data.dist.gst||''}"></div><div class="fg"><label>License No.</label><input id="ds-lic" value="${this.data.dist.license||''}"></div></div><div class="fg"><label>Address</label><textarea id="ds-addr" style="min-height:60px">${this.data.dist.address||''}</textarea></div><button class="btn btn-p" onclick="A.saveDistSettings()"><span class="material-icons-round">save</span>Save Settings</button></div></div>`:''}
     <div class="card" style="margin-top:14px"><div class="ch"><h3><span class="material-icons-round" style="vertical-align:middle;margin-right:6px;font-size:18px">devices</span>Active Sessions</h3><button class="btn btn-sm btn-er" onclick="A.logoutAll()"><span class="material-icons-round">logout</span>Sign Out All Devices</button></div><div class="cb" id="sessions-list"><div style="text-align:center;padding:20px;color:var(--mute)"><span class="material-icons-round spin" style="font-size:28px">autorenew</span></div></div></div>`;
   },
 
@@ -1470,6 +1480,86 @@ A.exportCSV=function(){
   const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download='inventory_'+new Date().toLocaleDateString('en-CA')+'.csv';a.click();
   this.toast('Inventory exported as CSV!','ok');
+};
+
+// WhatsApp Bill Share
+A.shareBillWA=function(id){
+  const b=this.data.bills.find(b=>b.id===id);if(!b)return;
+  const txt='💊 *PharmaDist Pro — Bill '+b.id+'*\n• Pharmacy: '+b.phName+'\n• Amount: ₹'+A.fmt(b.amt)+'\n• Due: '+b.due+'\n• Status: '+(b.status==='paid'?'✅ PAID':'❌ UNPAID')+'\n\nPay via UPI: '+(A.data.dist.upi||'N/A')+'\nLogin: '+window.location.origin;
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+};
+
+// Distributor Inventory
+A.loadDistInventory=async function(){
+  const el=Q('#pc');if(!el)return;
+  const res=await apiGet('/dist-stock');
+  A.data.distStock=res||[];
+  const items=A.data.distStock;
+  const low=items.filter(i=>i.stock<=i.min_stock);
+  el.innerHTML=
+    '<div class="ph"><div class="pt"><h1>My Stock</h1><p>Drugs you supply to pharmacies.</p></div>'+
+    '<button class="btn btn-p" onclick="A.addStockModal()"><span class="material-icons-round">add</span>Add Item</button> '+
+    '<button class="btn btn-s" onclick="A.nav(\'dist-inventory\')"><span class="material-icons-round">refresh</span>Refresh</button></div>'+
+    (low.length?'<div class="card" style="margin-bottom:14px;border-color:rgba(255,71,87,.3)"><div class="ch"><h3 style="color:var(--err)"><span class="material-icons-round">warning</span> Low Stock Alert</h3><span class="badge b-err">'+low.length+' items</span></div><div class="cb">'+low.map(i=>'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)"><span>'+i.name+'</span><span style="color:var(--err);font-weight:700">'+i.stock+' '+i.unit+' left (min '+i.min_stock+')</span></div>').join('')+'</div></div>':'')+
+    '<div class="card">'+
+    (items.length===0?'<div class="empty"><span class="material-icons-round">inventory_2</span><h3>No stock items yet</h3><p>Click Add Item to add your first product.</p></div>':
+    '<div class="tw"><table><thead><tr><th>Name</th><th>Category</th><th>Manufacturer</th><th>Price</th><th>MRP</th><th>Stock</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
+    items.map(i=>
+      '<tr><td><strong>'+i.name+'</strong></td><td>'+i.category+'</td><td>'+(i.mfr||'-')+'</td>'+
+      '<td>₹'+A.fmt(i.price)+'</td><td>₹'+A.fmt(i.mrp)+'</td>'+
+      '<td style="color:'+(i.stock<=i.min_stock?'var(--err)':'var(--ok)')+'"><strong>'+i.stock+'</strong> '+i.unit+'</td>'+
+      '<td>'+(i.expiry||'-')+'</td>'+
+      '<td>'+(i.stock===0?'<span class="badge b-err">Out</span>':i.stock<=i.min_stock?'<span class="badge b-warn">Low</span>':'<span class="badge b-ok">OK</span>')+'</td>'+
+      '<td><div class="ta">'+
+      '<button class="btn btn-sm btn-s" onclick="A.editStockModal(\''+i.id+'\')"><span class="material-icons-round">edit</span></button>'+
+      '<button class="btn btn-sm btn-er" onclick="A.delStock(\''+i.id+'\')"><span class="material-icons-round">delete</span></button>'+
+      '</div></td></tr>'
+    ).join('')+
+    '</tbody></table></div>')+
+    '</div>';
+};
+A.addStockModal=function(){
+  A.showModal('Add Stock Item',
+    '<div class="fr"><div class="fg"><label>Drug Name *</label><input id="si-name" placeholder="e.g. Paracetamol 500mg"></div>'+
+    '<div class="fg"><label>Category</label><select id="si-cat"><option>Analgesic</option><option>Antibiotic</option><option>Antacid</option><option>Vitamin</option><option>Antidiabetic</option><option>Antihypertensive</option><option>General</option></select></div></div>'+
+    '<div class="fr"><div class="fg"><label>Manufacturer</label><input id="si-mfr" placeholder="e.g. Sun Pharma"></div>'+
+    '<div class="fg"><label>Unit</label><select id="si-unit"><option>Strip</option><option>Bottle</option><option>Box</option><option>Vial</option><option>Sachet</option></select></div></div>'+
+    '<div class="fr"><div class="fg"><label>Price (₹) *</label><input id="si-price" type="number" min="0" step="0.01" placeholder="0.00"></div>'+
+    '<div class="fg"><label>MRP (₹)</label><input id="si-mrp" type="number" min="0" step="0.01" placeholder="0.00"></div></div>'+
+    '<div class="fr"><div class="fg"><label>Stock Qty *</label><input id="si-stock" type="number" min="0" placeholder="0"></div>'+
+    '<div class="fg"><label>Min Stock Alert</label><input id="si-min" type="number" min="0" value="10"></div></div>'+
+    '<div class="fg"><label>Expiry Date</label><input id="si-exp" type="date"></div>',
+    '<button class="btn btn-s" onclick="A.closeModal()">Cancel</button><button class="btn btn-p" onclick="A.saveStock()"><span class="material-icons-round">add</span>Add Item</button>');
+};
+A.saveStock=async function(){
+  const name=(Q('#si-name')?.value||'').trim(),price=parseFloat(Q('#si-price')?.value),stock=parseInt(Q('#si-stock')?.value);
+  if(!name||isNaN(price)||isNaN(stock)){A.toast('Fill required fields','err');return;}
+  const res=await apiPost('/dist-stock',{name,category:Q('#si-cat')?.value,mfr:(Q('#si-mfr')?.value||'').trim(),unit:Q('#si-unit')?.value,price,mrp:parseFloat(Q('#si-mrp')?.value)||price,stock,min_stock:parseInt(Q('#si-min')?.value)||10,expiry:Q('#si-exp')?.value});
+  if(res?.ok){A.closeModal();A.toast('Item added!','ok');A.nav('dist-inventory');}else{A.toast('Failed to add','err');}
+};
+A.editStockModal=function(id){
+  const i=(A.data.distStock||[]).find(s=>s.id===id);if(!i)return;
+  A.showModal('Edit: '+i.name,
+    '<div class="fr"><div class="fg"><label>Name *</label><input id="si-name" value="'+i.name+'"></div>'+
+    '<div class="fg"><label>Category</label><input id="si-cat" value="'+i.category+'"></div></div>'+
+    '<div class="fr"><div class="fg"><label>Manufacturer</label><input id="si-mfr" value="'+(i.mfr||'')+'"></div>'+
+    '<div class="fg"><label>Unit</label><input id="si-unit" value="'+(i.unit||'Strip')+'"></div></div>'+
+    '<div class="fr"><div class="fg"><label>Price (₹)</label><input id="si-price" type="number" value="'+i.price+'"></div>'+
+    '<div class="fg"><label>MRP (₹)</label><input id="si-mrp" type="number" value="'+i.mrp+'"></div></div>'+
+    '<div class="fr"><div class="fg"><label>Stock Qty</label><input id="si-stock" type="number" value="'+i.stock+'"></div>'+
+    '<div class="fg"><label>Min Stock</label><input id="si-min" type="number" value="'+i.min_stock+'"></div></div>'+
+    '<div class="fg"><label>Expiry</label><input id="si-exp" type="date" value="'+(i.expiry||'')+'"></div>',
+    '<button class="btn btn-s" onclick="A.closeModal()">Cancel</button><button class="btn btn-p" onclick="A.updateStock(\''+id+'\')">Update</button>');
+};
+A.updateStock=async function(id){
+  const name=(Q('#si-name')?.value||'').trim();if(!name){A.toast('Name required','err');return;}
+  const res=await apiPut('/dist-stock/'+id,{name,category:(Q('#si-cat')?.value||'').trim(),mfr:(Q('#si-mfr')?.value||'').trim(),unit:(Q('#si-unit')?.value||'').trim(),price:parseFloat(Q('#si-price')?.value)||0,mrp:parseFloat(Q('#si-mrp')?.value)||0,stock:parseInt(Q('#si-stock')?.value)||0,min_stock:parseInt(Q('#si-min')?.value)||10,expiry:Q('#si-exp')?.value});
+  if(res?.ok){const item=(A.data.distStock||[]).find(s=>s.id===id);if(item){item.name=name;item.stock=parseInt(Q('#si-stock')?.value)||0;}A.closeModal();A.toast('Updated!','ok');A.nav('dist-inventory');}else{A.toast('Update failed','err');}
+};
+A.delStock=async function(id){
+  if(!confirm('Delete this stock item?'))return;
+  const res=await apiDel('/dist-stock/'+id);
+  if(res?.ok){A.data.distStock=(A.data.distStock||[]).filter(s=>s.id!==id);A.toast('Deleted','warn');A.nav('dist-inventory');}else{A.toast('Delete failed','err');}
 };
 
 // Print Bill

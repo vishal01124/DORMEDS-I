@@ -287,7 +287,15 @@ async function initDB() {
     CREATE TABLE IF NOT EXISTS dist_info (
       id INTEGER PRIMARY KEY DEFAULT 1,
       name TEXT, address TEXT, phone TEXT, mobile TEXT,
-      email TEXT, gst TEXT, license TEXT
+      email TEXT, gst TEXT, license TEXT, upi TEXT
+    );
+    ALTER TABLE dist_info ADD COLUMN IF NOT EXISTS upi TEXT;
+    CREATE TABLE IF NOT EXISTS dist_stock (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL, category TEXT DEFAULT 'General',
+      mfr TEXT DEFAULT '', price REAL DEFAULT 0, mrp REAL DEFAULT 0,
+      stock INTEGER DEFAULT 0, min_stock INTEGER DEFAULT 10,
+      unit TEXT DEFAULT 'Strip', expiry TEXT DEFAULT '', created_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS drugs (
@@ -408,10 +416,10 @@ async function initDB() {
   const distExists = await dbGet('SELECT 1 as x FROM dist_info LIMIT 1');
   if (!distExists) {
     await dbRun(
-      'INSERT INTO dist_info VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+      'INSERT INTO dist_info VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING',
       [1,'PharmaDist Pro','100 Industrial Area, Pune, MH 411057',
        '+91 20 1234 5678','+91 99887 76655',
-       'support@pharmadist.com','27ABCDE1234F1Z5','MH-DIST-2020-001']
+       'support@pharmadist.com','27ABCDE1234F1Z5','MH-DIST-2020-001',null]
     );
   }
 
@@ -716,17 +724,56 @@ app.post('/api/change-password', authMiddleware, async (req, res) => {
   res.json({ ok: true, msg: 'Password changed successfully.' });
 });
 
-// ── DISTRIBUTOR SETTINGS ──────────────────────────────────────
-let distSettings = {};
-
-app.get('/api/dist-settings', authMiddleware, adminMiddleware, (req, res) => {
-  res.json(distSettings);
+// ── DISTRIBUTOR SETTINGS (DB-backed) ─────────────────────────
+app.get('/api/dist-settings', authMiddleware, async (req, res) => {
+  const d = await dbGet('SELECT * FROM dist_info WHERE id=1');
+  res.json(d || {});
 });
 
-app.post('/api/dist-settings', authMiddleware, adminMiddleware, (req, res) => {
-  const allowed = ['name','phone','mobile','email','upi','gst','license','address'];
-  allowed.forEach(k => { if (req.body[k] !== undefined) distSettings[k] = req.body[k]; });
-  res.json({ ok: true, settings: distSettings });
+app.post('/api/dist-settings', authMiddleware, adminMiddleware, async (req, res) => {
+  const b = req.body;
+  await dbRun(`UPDATE dist_info SET
+    name=COALESCE($1,name), address=COALESCE($2,address), phone=COALESCE($3,phone),
+    email=COALESCE($4,email), upi=COALESCE($5,upi), gst=COALESCE($6,gst),
+    license=COALESCE($7,license) WHERE id=1`,
+    [b.name||null,b.address||null,b.phone||null,b.email||null,b.upi||null,b.gst||null,b.license||null]);
+  const updated = await dbGet('SELECT * FROM dist_info WHERE id=1');
+  await auditLog('DIST_SETTINGS_UPDATED', req.user.id, 'admin', 'UPI: '+b.upi);
+  res.json({ ok: true, settings: updated });
+});
+
+// Admin change password
+app.post('/api/admin/change-password', authMiddleware, adminMiddleware, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) return res.status(400).json({ ok:false, msg:'Both passwords required.' });
+  if (newPassword.length < 8) return res.status(400).json({ ok:false, msg:'Min 8 characters.' });
+  const admin = await dbGet('SELECT * FROM admins WHERE id=$1', [req.user.id]);
+  if (!admin || admin.pass_hash !== hash(currentPassword)) return res.status(401).json({ ok:false, msg:'Current password is incorrect.' });
+  await dbRun('UPDATE admins SET pass_hash=$1 WHERE id=$2', [hash(newPassword), req.user.id]);
+  await auditLog('ADMIN_PASSWORD_CHANGED', req.user.id, 'admin', '');
+  res.json({ ok:true, msg:'Password changed successfully!' });
+});
+
+// ── DISTRIBUTOR STOCK (Inventory) ────────────────────────────
+app.get('/api/dist-stock', authMiddleware, adminMiddleware, async (req, res) => {
+  const items = await dbAll('SELECT * FROM dist_stock ORDER BY created_at DESC');
+  res.json(items || []);
+});
+app.post('/api/dist-stock', authMiddleware, adminMiddleware, async (req, res) => {
+  const d=req.body, id='STK-'+uid();
+  await dbRun('INSERT INTO dist_stock VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+    [id,d.name,d.category||'General',d.mfr||'',d.price||0,d.mrp||0,d.stock||0,d.min_stock||10,d.unit||'Strip',d.expiry||'',new Date().toISOString()]);
+  res.json({ ok:true, id });
+});
+app.put('/api/dist-stock/:sid', authMiddleware, adminMiddleware, async (req, res) => {
+  const d=req.body,{sid}=req.params;
+  await dbRun('UPDATE dist_stock SET name=$1,category=$2,mfr=$3,price=$4,mrp=$5,stock=$6,min_stock=$7,unit=$8,expiry=$9 WHERE id=$10',
+    [d.name,d.category,d.mfr,d.price,d.mrp,d.stock,d.min_stock,d.unit,d.expiry,sid]);
+  res.json({ ok:true });
+});
+app.delete('/api/dist-stock/:sid', authMiddleware, adminMiddleware, async (req, res) => {
+  await dbRun('DELETE FROM dist_stock WHERE id=$1',[req.params.sid]);
+  res.json({ ok:true });
 });
 
 
@@ -811,11 +858,36 @@ app.get('/api/pharmacies', authMiddleware, async (req, res) => {
 
 app.post('/api/pharmacies', authMiddleware, adminMiddleware, async (req, res) => {
   const d = req.body, pid = 'ph' + uid();
+  const pw = d.password || 'pharma123';
   await dbRun('INSERT INTO pharmacies VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)',
     [pid, d.name, d.address||'', d.license||'', d.contact||'', d.email,
-     hash(d.password||'pharma123'), d.plan||null, d.planExpiry||null,
-     d.waived||false, d.status||'active', d.joined||'', JSON.stringify(d.docs||[])]);
+     hash(pw), d.plan||null, d.planExpiry||null,
+     d.waived||false, d.status||'active', d.joined||new Date().toLocaleDateString('en-CA'), JSON.stringify(d.docs||[])]);
   await auditLog('PHARMACY_CREATED', req.user.id, 'admin', `${d.name} (${d.email})`);
+  // Send welcome email to pharmacy
+  const dist = await dbGet('SELECT * FROM dist_info WHERE id=1');
+  const loginUrl = APP_URL;
+  const welcomeHtml = `
+  <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;background:#0E1826;border-radius:12px;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#6C63FF,#00D4FF);padding:32px;text-align:center">
+      <div style="font-size:36px">💊</div>
+      <h1 style="color:#fff;margin:8px 0 4px;font-size:1.5rem">Welcome to PharmaDist Pro!</h1>
+      <p style="color:rgba(255,255,255,.8);margin:0;font-size:.875rem">Your pharmacy account is ready</p>
+    </div>
+    <div style="padding:32px;color:#E8F0FE">
+      <p>Hi <strong>${d.name}</strong>,</p>
+      <p style="color:#7B9CC4">Your pharmacy account has been created by <strong>${dist?.name||'PharmaDist Pro'}</strong>. Use the credentials below to sign in:</p>
+      <div style="background:#1A2540;border-radius:10px;padding:20px;margin:20px 0;font-family:monospace">
+        <div style="margin-bottom:10px"><span style="color:#7B9CC4;font-size:.8rem">EMAIL</span><br><strong style="color:#00D4FF">${d.email}</strong></div>
+        <div><span style="color:#7B9CC4;font-size:.8rem">PASSWORD</span><br><strong style="color:#6C63FF">${pw}</strong></div>
+      </div>
+      <div style="text-align:center;margin:24px 0">
+        <a href="${loginUrl}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#6C63FF,#00D4FF);color:#fff;text-decoration:none;border-radius:8px;font-weight:700">Login Now</a>
+      </div>
+      <p style="font-size:.8rem;color:#4A6080">Please change your password after first login. Contact ${dist?.email||'support'} for help.</p>
+    </div>
+  </div>`;
+  await sendMail(d.email, `Welcome to ${dist?.name||'PharmaDist Pro'} — Your Login Details`, welcomeHtml);
   res.json({ ok: true, id: pid });
 });
 
