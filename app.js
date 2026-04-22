@@ -153,13 +153,16 @@ const A = {
     const url = API + '/sse?token=' + encodeURIComponent(this._token);
     const es = new EventSource(url);
     this._sse = es;
-    es.addEventListener('connected', () => console.log('%c🔔 SSE connected — real-time notifications active','color:#00D48E'));
+    es.addEventListener('connected', () => {
+      console.log('%c🔔 SSE connected — real-time notifications active','color:#00D48E');
+      this.requestNotifPerm();
+    });
     es.addEventListener('notif', e => {
       try {
         const n = JSON.parse(e.data);
         this.data.notifs.unshift(n);
         this.toast(n.msg, n.type === 'stock' || n.type === 'expiry' ? 'warn' : 'ok');
-        // Update notification badge
+        this.showBrowserNotif('PharmaDist Pro', n.msg);
         const dot = Q('.ndot'); if (dot) dot.style.display = 'block';
       } catch(_){}
     });
@@ -167,13 +170,24 @@ const A = {
       try {
         const d = JSON.parse(e.data);
         this.toast('New order from ' + (d.phName || 'pharmacy'), 'ok', d.id);
+        this.showBrowserNotif('New Order Received', 'From ' + (d.phName || 'pharmacy') + ' · ' + d.id);
       } catch(_){}
     });
     es.onerror = () => {
       es.close();
-      // Reconnect after 10s if still logged in
       if (this._token) setTimeout(() => this.connectSSE(), 10000);
     };
+  },
+
+  requestNotifPerm(){
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  },
+  showBrowserNotif(title, body){
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try { new Notification(title, { body, icon: '/favicon.ico' }); } catch(_){}
+    }
   },
 
   disconnectSSE(){
@@ -502,8 +516,9 @@ const A = {
     ${list.length===0?'<div class="empty"><span class="material-icons-round">shopping_cart</span><h3>No orders found</h3></div>':''}
     ${list.length>0?`<div class="card"><div class="tw"><table><thead><tr><th>Order ID</th><th>Pharmacy</th><th>Drugs</th><th>Date</th><th>Total</th><th>Delivery</th><th>Status</th><th>Actions</th></tr></thead><tbody>${list.map(o=>`<tr><td style="font-family:monospace;font-size:.8rem">${o.id}</td><td>${o.phName}</td><td><div style="max-width:180px">${o.drugs.map(d=>`<div style="font-size:.8rem">${d.name} <span style="color:var(--acc)">×${d.qty}</span></div>`).join('')}</div></td><td>${o.date}</td><td style="font-weight:700;color:var(--txt)">₹${this.fmt(o.tot)}</td><td>${o.del==='free'?'<span class="badge b-ok">Free</span>':'<span class="badge b-gray">Paid</span>'}</td><td>${this.sbadge(o.status)}</td><td><div class="ta"><button class="btn btn-sm btn-s" onclick="A.vOrder('${o.id}')">View</button>${o.status==='pending'?`<button class="btn btn-sm btn-ok" onclick="A.approveOrd('${o.id}')">Approve</button>`:''}${o.status==='approved'?`<button class="btn btn-sm btn-p" onclick="A.deliverOrd('${o.id}')">Deliver</button>`:''}</div></td></tr>`).join('')}</tbody></table></div></div>`:''}`;
   },
-  async approveOrd(id){const o=this.data.orders.find(o=>o.id===id);if(!o)return;await apiPut('/orders/'+id,{status:'approved'});o.status='approved';this.addNotif('order','Order '+id+' approved!',false,o.phId);this.toast(id+' approved!','ok');this.nav('orders');},
-  async deliverOrd(id){const o=this.data.orders.find(o=>o.id===id);if(!o)return;await apiPut('/orders/'+id,{status:'delivered'});o.status='delivered';if(!o.billed){await this.genBill(id,true);}this.addNotif('order','Order '+id+' delivered!',false,o.phId);this.toast(id+' delivered!','ok');this.nav('orders');},
+  async approveOrd(id){const o=this.data.orders.find(o=>o.id===id);if(!o)return;await apiPut('/orders/'+id,{status:'approved'});o.status='approved';this.addNotif('order','Order '+id+' approved!',false,o.phId);this.showBrowserNotif('Order Approved','Order '+id+' has been approved');this.toast(id+' approved!','ok');this.nav('orders');},
+  async dispatchOrd(id){const o=this.data.orders.find(o=>o.id===id);if(!o)return;await apiPut('/orders/'+id,{status:'dispatched'});o.status='dispatched';this.addNotif('order','Order '+id+' dispatched — on the way!',false,o.phId);this.showBrowserNotif('Order Dispatched','Order '+id+' is on its way!');this.toast(id+' dispatched!','ok');this.nav('orders');},
+  async deliverOrd(id){const o=this.data.orders.find(o=>o.id===id);if(!o)return;await apiPut('/orders/'+id,{status:'delivered'});o.status='delivered';if(!o.billed){await this.genBill(id,true);}this.addNotif('order','Order '+id+' delivered!',false,o.phId);this.showBrowserNotif('Order Delivered','Order '+id+' has been delivered');this.toast(id+' delivered!','ok');this.nav('orders');},
   async genBill(ordId,silent=false){const o=this.data.orders.find(o=>o.id===ordId);if(!o||o.billed)return;const b={id:'BILL-'+Date.now(),phId:o.phId,phName:o.phName,ordId,amt:o.tot,date:new Date().toLocaleDateString('en-CA'),due:new Date(Date.now()+15*864e5).toLocaleDateString('en-CA'),status:'unpaid',type:'bulk',paid:null};this.data.bills.push(b);o.billed=true;this.save();if(!silent){this.addNotif('payment','Bill '+b.id+' – ₹'+this.fmt(b.amt),false,o.phId);this.toast('Bill generated!','ok');}},
   vOrder(id){
     const o=this.data.orders.find(o=>o.id===id);if(!o)return;
@@ -582,7 +597,12 @@ const A = {
     const phId=this.st.user.phId;const drugs=this.data.drugs.filter(d=>d.phId===phId);const today=new Date();
     const exp=drugs.filter(d=>{const e=new Date(d.exp);return e>today&&(e-today)/864e5<=30;});const expired=drugs.filter(d=>new Date(d.exp)<today);const low=drugs.filter(d=>d.qty<=d.min);
     const ords=this.data.orders.filter(o=>o.phId===phId);const bills=this.data.bills.filter(b=>b.phId===phId);const ph=this.data.pharmacies.find(p=>p.id===phId);
-    return`<div class="ph"><div class="pt"><h1>${ph?.name||'Dashboard'}</h1><p>Welcome back! Here's your pharmacy overview.</p></div><div class="pa"><button class="btn btn-s" onclick="A.nav('inventory')"><span class="material-icons-round">inventory_2</span>Inventory</button><button class="btn btn-p" onclick="A.placeOrderModal()"><span class="material-icons-round">shopping_cart</span>Order from Distributor</button></div></div>
+    // Onboarding checklist for new pharmacies
+    const isNew=ords.length===0||!ph?.plan;
+    const checks=[{done:!!ph?.name,label:'Profile Complete',icon:'person',action:"A.nav('profile')"},{done:!!ph?.plan,label:'Subscription Active',icon:'card_membership',action:"A.nav('subscriptions')"},{done:ords.length>0,label:'First Order Placed',icon:'shopping_cart',action:"A.nav('catalog')"},{done:drugs.length>0,label:'Inventory Added',icon:'inventory_2',action:"A.nav('inventory')"}];
+    const checklist=isNew?`<div class="card" style="margin-bottom:22px;border-color:rgba(108,99,255,.4);background:linear-gradient(135deg,rgba(108,99,255,.06),var(--card))"><div class="ch"><h3 style="color:var(--acc)">🚀 Getting Started</h3><span class="badge b-acc">${checks.filter(c=>c.done).length}/${checks.length} Done</span></div><div class="cb"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">${checks.map(c=>`<div onclick="${c.action}" style="display:flex;align-items:center;gap:10px;padding:12px;background:${c.done?'rgba(0,212,142,.08)':'var(--inp)'};border:1px solid ${c.done?'var(--ok)':'var(--bdr)'};border-radius:10px;cursor:pointer;transition:.2s" onmouseenter="this.style.borderColor='var(--acc)'" onmouseleave="this.style.borderColor='${c.done?'var(--ok)':'var(--bdr)'}'"><span class="material-icons-round" style="color:${c.done?'var(--ok)':'var(--mute)'}">${c.done?'check_circle':c.icon}</span><span style="font-size:.875rem;font-weight:600;color:${c.done?'var(--ok)':'var(--txt2)'}">${c.label}</span></div>`).join('')}</div></div></div>`:'';
+    return`<div class="ph"><div class="pt"><h1>${ph?.name||'Dashboard'}</h1><p>Welcome back! Here's your pharmacy overview.</p></div><div class="pa"><button class="btn btn-s" onclick="A.nav('catalog')"><span class="material-icons-round">store</span>Product Catalog</button><button class="btn btn-p" onclick="A.nav('catalog')"><span class="material-icons-round">shopping_cart</span>Order from Catalog</button></div></div>
+    ${checklist}
     <div class="sg"><div class="sc p"><div class="sic p"><span class="material-icons-round">medication</span></div><div><div class="sv">${drugs.length}</div><div class="sl2">Total Drugs</div><div class="scc up">${drugs.reduce((s,d)=>s+d.qty,0)} units</div></div></div><div class="sc o"><div class="sic o"><span class="material-icons-round">warning</span></div><div><div class="sv">${low.length}</div><div class="sl2">Low Stock</div><div class="scc dn">${expired.length} Expired</div></div></div><div class="sc g"><div class="sic g"><span class="material-icons-round">shopping_cart</span></div><div><div class="sv">${ords.filter(o=>o.type==='inventory').length}</div><div class="sl2">Inventory Orders</div><div class="scc">${ords.filter(o=>o.type==='inventory'&&o.status==='pending').length} Pending</div></div></div><div class="sc c"><div class="sic c"><span class="material-icons-round">receipt_long</span></div><div><div class="sv">₹${this.fmt(bills.filter(b=>b.status==='unpaid').reduce((s,b)=>s+b.amt,0))}</div><div class="sl2">Outstanding Bills</div><div class="scc">${bills.filter(b=>b.status==='unpaid').length} bills</div></div></div></div>
     ${(exp.length>0||low.length>0||expired.length>0)?`<div class="card" style="margin-bottom:22px;border-color:rgba(255,181,71,.4)"><div class="ch" style="border-color:rgba(255,181,71,.2)"><h3 style="color:var(--warn)">⚠️ Smart Alerts</h3><span class="badge b-warn">${exp.length+low.length+expired.length} Issues</span></div><div class="cb"><div class="al">${expired.map(d=>`<div class="ai danger"><span class="material-icons-round ai-icon">error</span><div class="ai-txt"><strong>${d.name} – EXPIRED</strong><span>Expiry: ${d.exp} · Qty: ${d.qty}</span></div><button class="btn btn-sm btn-er" onclick="A.returnModal()">Return</button></div>`).join('')}${exp.map(d=>{const days=Math.round((new Date(d.exp)-today)/864e5);return`<div class="ai warning"><span class="material-icons-round ai-icon">schedule</span><div class="ai-txt"><strong>${d.name} – Expiring in ${days} days</strong><span>Expiry: ${d.exp} · Qty: ${d.qty}</span></div><button class="btn btn-sm btn-warn" onclick="A.returnModal()">Return</button></div>`}).join('')}${low.map(d=>`<div class="ai danger"><span class="material-icons-round ai-icon">inventory_2</span><div class="ai-txt"><strong>${d.name} – Low Stock (${d.qty} left)</strong><span>Min: ${d.min} units</span></div><button class="btn btn-sm btn-p" onclick="A.placeOrderModal()">Reorder</button></div>`).join('')}</div></div></div>`:''}
     <div class="cr"><div class="card"><div class="ch"><h3>Sales Overview</h3></div><div class="cc"><canvas id="sc2"></canvas></div></div><div class="card"><div class="ch"><h3>Inventory by Category</h3></div><div class="cc"><canvas id="ic2"></canvas></div></div></div>
@@ -866,7 +886,7 @@ const A = {
   // ═══════════════════════════════════════════════════════════
   rAnalytics(){
     const d=this.data;
-    return`<div class="ph"><div class="pt"><h1>SaaS Analytics</h1><p>Platform-wide metrics, tenant management, and revenue insights.</p></div><button class="btn btn-p" onclick="A.addPharmacyModal()"><span class="material-icons-round">add</span>Add Tenant</button></div>
+    return`<div class="ph"><div class="pt"><h1>SaaS Analytics</h1><p>Platform-wide metrics, tenant management, and revenue insights.</p></div><button class="btn btn-s" onclick="A.exportCSV('pharmacies')"><span class="material-icons-round">download</span>Pharmacies CSV</button><button class="btn btn-s" onclick="A.exportCSV('bills')"><span class="material-icons-round">download</span>Bills CSV</button><button class="btn btn-p" onclick="A.addPharmacyModal()"><span class="material-icons-round">add</span>Add Tenant</button></div>
     <div class="sg" id="an-grid">
     <div class="sc p"><div class="sic p"><span class="material-icons-round">storefront</span></div><div><div class="sv" id="an-ph">—</div><div class="sl2">Total Tenants</div><div class="scc up" id="an-ph2"></div></div></div>
     <div class="sc c"><div class="sic c"><span class="material-icons-round">currency_rupee</span></div><div><div class="sv" id="an-rev">—</div><div class="sl2">Total Revenue</div><div class="scc up" id="an-rev2"></div></div></div>
@@ -888,6 +908,28 @@ const A = {
     set('an-sess',res.activeSessions);
     set('an-ord',res.totalOrders+' total orders');
   },
+
+  exportCSV(type){
+    let rows=[],name=type+'.csv';
+    if(type==='orders'){rows=[['Order ID','Pharmacy','Date','Items','Subtotal','GST','Total','Status','Delivery']];this.data.orders.filter(o=>o.type==='inventory').forEach(o=>rows.push([o.id,o.phName,o.date,o.drugs.map(d=>d.name+'×'+d.qty).join(';'),(+o.sub).toFixed(2),(+o.gst).toFixed(2),(+o.tot).toFixed(2),o.status,o.del]));name='orders.csv';}
+    else if(type==='bills'){rows=[['Bill ID','Pharmacy','Order','Amount','Date','Due','Status']];this.data.bills.forEach(b=>rows.push([b.id,b.phName,b.ordId,(+b.amt).toFixed(2),b.date,b.due,b.status]));name='bills.csv';}
+    else if(type==='pharmacies'){rows=[['ID','Name','Email','Contact','License','Plan','Status','Joined']];this.data.pharmacies.forEach(p=>rows.push([p.id,p.name,p.email,p.contact,p.license,p.plan?p.plan+'/mo':'None',p.status,p.joined]));name='pharmacies.csv';}
+    const csv=rows.map(r=>r.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+    const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=name;a.click();
+    this.toast('Downloaded!','ok',name);
+  },
+
+  downloadOrderPDF(id){
+    const o=this.data.orders.find(o=>o.id===id);if(!o)return;
+    const d=this.data.dist;
+    let c='PharmaDist Pro\n'+(d.address||'')+'\nGST: '+(d.gst||'')+'\n\nTAX INVOICE\nOrder: '+o.id+'\nDate: '+o.date+'\nPharmacy: '+o.phName+'\nStatus: '+o.status.toUpperCase()+'\n\n';
+    c+='Drug                                    Qty   Unit Price   Total\n'+'='.repeat(65)+'\n';
+    o.drugs.forEach(dr=>{ c+=(dr.name||'').padEnd(40)+String(dr.qty).padEnd(6)+('Rs'+(+dr.up).toFixed(2)).padEnd(13)+'Rs'+(+dr.tot).toFixed(2)+'\n'; });
+    c+='='.repeat(65)+'\n'+'Subtotal: Rs'+(+o.sub).toFixed(2)+'\nGST(5%):  Rs'+(+o.gst).toFixed(2)+'\nTOTAL:    Rs'+(+o.tot).toFixed(2)+'\n';
+    const blob=new Blob([c],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Invoice-'+o.id+'.txt';a.click();
+    this.toast('Invoice downloaded!','ok','Invoice-'+o.id+'.txt');
+  },
+
 
   async loadAudit(){
     const res=await apiGet('/audit-log');const tbody=Q('#audit-body');if(!tbody||!res)return;
