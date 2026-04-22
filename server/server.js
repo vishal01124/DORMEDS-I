@@ -170,6 +170,25 @@ app.use('/api/reset-password', authLimiter);
 // ── Static files ──────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, '..')));
 
+// ── Health/debug endpoint (temporary) ─────────────────────────
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    version: '4.0',
+    smtp: {
+      host:    process.env.SMTP_HOST   ? '✅ set (' + process.env.SMTP_HOST + ')' : '❌ missing',
+      port:    process.env.SMTP_PORT   ? '✅ set (' + process.env.SMTP_PORT + ')' : '❌ missing (default 587)',
+      user:    process.env.SMTP_USER   ? '✅ set (' + process.env.SMTP_USER + ')' : '❌ missing',
+      pass:    process.env.SMTP_PASS   ? '✅ set (hidden)' : '❌ missing',
+      from:    process.env.SMTP_FROM   ? '✅ set (' + process.env.SMTP_FROM + ')' : '❌ missing',
+      mailerReady: mailer !== null ? '✅ mailer created' : '❌ mailer is null',
+    },
+    jwt:     process.env.JWT_SECRET   ? '✅ custom secret set' : '⚠️ default secret!',
+    db:      process.env.DATABASE_URL ? '✅ set' : '❌ missing',
+    appUrl:  process.env.APP_URL      || 'not set',
+  });
+});
+
 // ── Helpers ───────────────────────────────────────────────────
 const uid       = () => crypto.randomBytes(8).toString('hex');
 const hash      = (pw) => crypto.createHash('sha256').update(pw).digest('hex');
