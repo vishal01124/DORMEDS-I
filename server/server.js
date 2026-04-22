@@ -190,6 +190,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     version: '4.0',
+    resend: process.env.RESEND_API_KEY ? '✅ set (hidden)' : '❌ missing',
     smtp: {
       host:    process.env.SMTP_HOST   ? '✅ set (' + process.env.SMTP_HOST + ')' : '❌ missing',
       port:    process.env.SMTP_PORT   ? '✅ set (' + process.env.SMTP_PORT + ')' : '❌ missing (default 587)',
