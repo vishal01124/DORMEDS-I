@@ -304,7 +304,7 @@ const A = {
     const pg=this.st.page,role=this.st.role;
     const mp={
       admin:{dashboard:()=>this.rAdminDash(),pharmacies:()=>this.rPharmacies(),documentation:()=>this.rAdminDocs(),orders:()=>this.rAdminOrders(),subscriptions:()=>this.rSubs(),billing:()=>this.rAdminBilling(),returns:()=>this.rAdminReturns(),support:()=>this.rAdminSupport(),analytics:()=>this.rAnalytics(),audit:()=>this.rAudit(),admins:()=>this.rAdminTeam(),products:()=>this.rAdminProducts(),profile:()=>this.rProfile()},
-      pharmacy:{dashboard:()=>this.rPhDash(),inventory:()=>this.rInventory(),orders:()=>this.rPhOrders(),documentation:()=>this.rPhDocs(),billing:()=>this.rPhBilling(),subscriptions:()=>this.rPhSubs(),returns:()=>this.rPhReturns(),support:()=>this.rPhSupport(),profile:()=>this.rProfile()}
+      pharmacy:{dashboard:()=>this.rPhDash(),inventory:()=>this.rInventory(),catalog:()=>this.rPhCatalog(),orders:()=>this.rPhOrders(),documentation:()=>this.rPhDocs(),billing:()=>this.rPhBilling(),subscriptions:()=>this.rPhSubs(),returns:()=>this.rPhReturns(),support:()=>this.rPhSupport(),profile:()=>this.rProfile()}
     };
     el.innerHTML=(mp[role]?.[pg]||mp[role]?.dashboard)();
     setTimeout(()=>{
@@ -314,6 +314,7 @@ const A = {
       if(pg==='audit'&&role==='admin')this.loadAudit();
       if(pg==='admins'&&role==='admin')this.loadAdminTeam();
       if(pg==='products'&&role==='admin')this.loadAdminProducts();
+      if(pg==='catalog'&&role==='pharmacy')this.loadPhCatalog();
     },50);
   },
 
@@ -402,7 +403,7 @@ const A = {
   navPh(){
     const phId=this.st.user.phId;const d=this.data;
     const ls=d.drugs.filter(g=>g.phId===phId&&g.qty<=g.min).length;const po=d.orders.filter(o=>o.phId===phId&&o.type==='inventory'&&o.status==='pending').length;const ub=d.bills.filter(b=>b.phId===phId&&b.status==='unpaid').length;
-    return this.navSec('Overview',[{p:'dashboard',i:'dashboard',l:'Dashboard'},{p:'inventory',i:'inventory_2',l:'Inventory',b:ls||undefined}])+this.navSec('Operations',[{p:'orders',i:'shopping_cart',l:'Orders',b:po||undefined},{p:'documentation',i:'description',l:'Documentation'}])+this.navSec('Finance',[{p:'billing',i:'receipt_long',l:'Billing',b:ub||undefined},{p:'subscriptions',i:'card_membership',l:'Subscription'},{p:'returns',i:'assignment_return',l:'Returns'}])+this.navSec('Help',[{p:'support',i:'support_agent',l:'Support'}])+this.navSec('Account',[{p:'profile',i:'manage_accounts',l:'My Account'}]);
+    return this.navSec('Overview',[{p:'dashboard',i:'dashboard',l:'Dashboard'},{p:'inventory',i:'inventory_2',l:'Inventory',b:ls||undefined}])+this.navSec('Catalog',[{p:'catalog',i:'store',l:'Product Catalog'}])+this.navSec('Operations',[{p:'orders',i:'shopping_cart',l:'Orders',b:po||undefined},{p:'documentation',i:'description',l:'Documentation'}])+this.navSec('Finance',[{p:'billing',i:'receipt_long',l:'Billing',b:ub||undefined},{p:'subscriptions',i:'card_membership',l:'Subscription'},{p:'returns',i:'assignment_return',l:'Returns'}])+this.navSec('Help',[{p:'support',i:'support_agent',l:'Support'}])+this.navSec('Account',[{p:'profile',i:'manage_accounts',l:'My Account'}]);
   },
   navSec(label,items){return`<div class="snl">${label}</div>${items.map(it=>`<a class="ni${this.st.page===it.p?' active':''}" data-page="${it.p}" onclick="A.nav('${it.p}');A.setHT('${it.l}')">${'<span class="material-icons-round">'+it.i+'</span>'}<span class="nil">${it.l}</span>${it.b?'<span class="nb">'+it.b+'</span>':''}</a>`).join('')}`;},
   setHT(t){const e=Q('#ht');if(e)e.textContent=t;},
@@ -928,6 +929,192 @@ const A = {
     </div>
     <div class="card"><div class="tw"><table><thead><tr><th>#</th><th>Product Name</th><th>Category</th><th>Price (₹)</th><th>Stock</th><th>Expiry Date</th><th>Status</th><th>Actions</th></tr></thead>
     <tbody id="prod-tbody"><tr><td colspan="8"><div class="empty"><span class="material-icons-round spin">autorenew</span><h3>Loading…</h3></div></td></tr></tbody></table></div></div>`;
+  },
+
+  // ===== PHARMACY PRODUCT CATALOG =====
+  rPhCatalog(){
+    return`<div class="ph"><div class="pt"><h1>Product Catalog</h1><p>Browse distributor products and place inventory orders directly.</p></div>
+    <div class="pa"><button class="btn btn-p" id="ph-cart-btn" onclick="A.phCatalogCheckout()" style="display:none"><span class="material-icons-round">shopping_cart</span>Place Order (<span id="ph-cart-count">0</span> items)</button></div></div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="ch" style="flex-wrap:wrap;gap:10px">
+        <div style="display:flex;gap:8px;align-items:center;flex:1;min-width:220px">
+          <span class="material-icons-round" style="color:var(--mute)">search</span>
+          <input id="phcat-srch" type="text" placeholder="Search products…" style="border:none;background:transparent;flex:1;padding:0" oninput="A.filterPhCatalog()">
+        </div>
+        <select id="phcat-cat" onchange="A.filterPhCatalog()" style="padding:5px 11px;background:var(--inp);border:1px solid var(--bdr);border-radius:var(--rs);color:var(--txt);font-family:inherit;min-width:140px">
+          <option value="all">All Categories</option>
+          <option value="Analgesic">Analgesic</option>
+          <option value="Antibiotic">Antibiotic</option>
+          <option value="Antidiabetic">Antidiabetic</option>
+          <option value="Antihypertensive">Antihypertensive</option>
+          <option value="Antihistamine">Antihistamine</option>
+          <option value="Statin">Statin</option>
+          <option value="PPI">PPI</option>
+          <option value="Antifungal">Antifungal</option>
+          <option value="Antiviral">Antiviral</option>
+          <option value="Vitamin">Vitamin</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div id="phcat-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+      <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--mute)">
+        <span class="material-icons-round spin" style="font-size:36px">autorenew</span>
+        <p style="margin-top:10px">Loading products…</p>
+      </div>
+    </div>`;
+  },
+
+  // Cart stored per session
+  _phCart: {},
+
+  async loadPhCatalog(){
+    const prods = await apiGet('/products') || this.data.products || [];
+    this.data.products = prods;
+    this._phCart = {};
+    this._renderPhCatalogGrid(prods);
+  },
+
+  filterPhCatalog(){
+    const srch=(Q('#phcat-srch')?.value||'').toLowerCase();
+    const cat=Q('#phcat-cat')?.value||'all';
+    const prods=this.data.products.filter(p=>{
+      const matchCat=cat==='all'||p.category===cat;
+      const matchSrch=!srch||p.name.toLowerCase().includes(srch)||p.category.toLowerCase().includes(srch);
+      return matchCat&&matchSrch;
+    });
+    this._renderPhCatalogGrid(prods);
+  },
+
+  _renderPhCatalogGrid(prods){
+    const grid=Q('#phcat-grid');if(!grid)return;
+    const today=new Date();
+    if(!prods.length){
+      grid.innerHTML=`<div style="grid-column:1/-1"><div class="empty"><span class="material-icons-round">store</span><h3>No products found</h3><p>The distributor hasn't added any products yet.</p></div></div>`;
+      return;
+    }
+    grid.innerHTML=prods.map(p=>{
+      const exp=new Date(p.expiry_date);
+      const daysLeft=Math.round((exp-today)/864e5);
+      const expired=daysLeft<0;
+      const nearExp=daysLeft>=0&&daysLeft<=30;
+      const outOfStock=p.stock<=0;
+      const cartQty=this._phCart[p.id]||0;
+      return`<div class="card" style="display:flex;flex-direction:column;gap:0;transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 0 0 2px var(--acc)'" onmouseleave="this.style.boxShadow=''">
+        <div style="padding:16px 16px 12px;border-bottom:1px solid var(--bdr)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
+            <div style="background:linear-gradient(135deg,rgba(108,99,255,.15),rgba(0,212,255,.1));border-radius:10px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <span class="material-icons-round" style="color:var(--acc);font-size:22px">medication</span>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;font-size:.95rem;color:var(--txt);line-height:1.3;margin-bottom:3px">${p.name}</div>
+              <span class="badge b-gray" style="font-size:.7rem">${p.category}</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+            <div style="background:var(--inp);border-radius:8px;padding:8px 10px">
+              <div style="font-size:.68rem;color:var(--mute);margin-bottom:2px">UNIT PRICE</div>
+              <div style="font-size:1.1rem;font-weight:800;color:var(--acc)">₹${(+p.price).toFixed(2)}</div>
+            </div>
+            <div style="background:var(--inp);border-radius:8px;padding:8px 10px">
+              <div style="font-size:.68rem;color:var(--mute);margin-bottom:2px">STOCK</div>
+              <div style="font-size:1.1rem;font-weight:800;color:${outOfStock?'var(--err)':p.stock<=20?'var(--warn)':'var(--ok)'}">${p.stock} <span style="font-size:.7rem;font-weight:400">units</span></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${outOfStock?'<span class="badge b-err">Out of Stock</span>':nearExp?`<span class="badge b-warn">Exp Soon (${daysLeft}d)</span>`:'<span class="badge b-ok">Available</span>'}
+            ${expired?'<span class="badge b-err">Expired</span>':''}
+            <span style="font-size:.72rem;color:var(--mute);margin-left:auto">Exp: ${p.expiry_date}</span>
+          </div>
+        </div>
+        <div style="padding:12px 16px;display:flex;gap:8px;align-items:center">
+          <div style="display:flex;align-items:center;border:1px solid var(--bdr);border-radius:8px;overflow:hidden">
+            <button onclick="A._phCartAdj('${p.id}',-1)" style="background:var(--inp);border:none;padding:6px 10px;cursor:pointer;color:var(--txt);font-size:1rem;line-height:1">−</button>
+            <input type="number" id="phq-${p.id}" value="${cartQty}" min="0" max="${p.stock}" style="width:50px;text-align:center;border:none;background:transparent;color:var(--txt);font-weight:700;font-size:.95rem;padding:6px 0" onchange="A._phCartSet('${p.id}',this.value)">
+            <button onclick="A._phCartAdj('${p.id}',1)" style="background:var(--inp);border:none;padding:6px 10px;cursor:pointer;color:var(--txt);font-size:1rem;line-height:1">+</button>
+          </div>
+          <button onclick="A._phCartAdj('${p.id}',1)" ${outOfStock||expired?'disabled':''} class="btn btn-p" style="flex:1;justify-content:center;font-size:.85rem;padding:7px 10px;${outOfStock||expired?'opacity:.4;cursor:not-allowed':''}"><span class="material-icons-round" style="font-size:16px">add_shopping_cart</span>Add to Order</button>
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  _phCartAdj(pid, delta){
+    const prod=this.data.products.find(p=>p.id==pid);if(!prod)return;
+    const cur=this._phCart[pid]||0;
+    const nv=Math.max(0,Math.min(prod.stock,cur+delta));
+    this._phCart[pid]=nv;
+    const inp=Q('#phq-'+pid);if(inp)inp.value=nv;
+    this._phCartUpdate();
+  },
+
+  _phCartSet(pid, val){
+    const prod=this.data.products.find(p=>p.id==pid);if(!prod)return;
+    const nv=Math.max(0,Math.min(prod.stock,parseInt(val)||0));
+    this._phCart[pid]=nv;
+    this._phCartUpdate();
+  },
+
+  _phCartUpdate(){
+    const total=Object.values(this._phCart).reduce((s,v)=>s+(v||0),0);
+    const btn=Q('#ph-cart-btn');const cnt=Q('#ph-cart-count');
+    if(btn)btn.style.display=total>0?'flex':'none';
+    if(cnt)cnt.textContent=total;
+  },
+
+  phCatalogCheckout(){
+    const items=Object.entries(this._phCart).filter(([,q])=>q>0).map(([pid,qty])=>{
+      const p=this.data.products.find(pr=>pr.id==pid);
+      return p?{prod:p,qty}:null;
+    }).filter(Boolean);
+    if(!items.length){this.toast('Add items to your order first','warn');return;}
+    const ph=this.data.pharmacies.find(p=>p.id===this.st.user.phId);
+    const del=ph?.plan==='1500'?'free':'paid';
+    const sub=items.reduce((s,i)=>s+(+i.prod.price)*i.qty,0);
+    const gst=sub*.05;const tot=sub+gst;
+    const rows=items.map(i=>`
+      <tr>
+        <td style="font-weight:600">${i.prod.name}</td>
+        <td><span class="badge b-gray" style="font-size:.7rem">${i.prod.category}</span></td>
+        <td style="text-align:center">
+          <div style="display:flex;align-items:center;gap:4px;justify-content:center">
+            <button onclick="A._phCartAdj('${i.prod.id}',-1);A.phCatalogCheckout()" style="background:var(--inp);border:1px solid var(--bdr);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--txt)">−</button>
+            <span style="font-weight:700;min-width:28px;text-align:center">${i.qty}</span>
+            <button onclick="A._phCartAdj('${i.prod.id}',1);A.phCatalogCheckout()" style="background:var(--inp);border:1px solid var(--bdr);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--txt)">+</button>
+          </div>
+        </td>
+        <td style="text-align:right">₹${(+i.prod.price).toFixed(2)}</td>
+        <td style="text-align:right;font-weight:700;color:var(--acc)">₹${((+i.prod.price)*i.qty).toFixed(2)}</td>
+      </tr>`).join('');
+    this.showModal('Review & Place Order',
+      `<div class="ai info" style="margin-bottom:14px"><span class="material-icons-round ai-icon">local_shipping</span><div class="ai-txt"><strong>${ph?.name||'Your Pharmacy'}</strong><span>Plan: ${ph?.plan?'₹'+ph.plan+'/mo':' No plan'} · Delivery: <strong>${del==='free'?'Free':'Paid'}</strong></span></div></div>
+       <div class="tw" style="margin-bottom:14px"><table><thead><tr><th>Product</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit ₹</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table></div>
+       <div style="background:var(--inp);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+         <div style="display:flex;justify-content:space-between;font-size:.875rem"><span style="color:var(--mute)">Subtotal</span><span>₹${this.fmt(sub)}</span></div>
+         <div style="display:flex;justify-content:space-between;font-size:.875rem"><span style="color:var(--mute)">GST (5%)</span><span>₹${this.fmt(gst)}</span></div>
+         <div style="display:flex;justify-content:space-between;font-size:1.1rem;font-weight:800;border-top:1px solid var(--bdr);padding-top:6px;margin-top:2px"><span>Total</span><span style="color:var(--acc)">₹${this.fmt(tot)}</span></div>
+       </div>
+       <div class="fg"><label>Notes / Special Instructions</label><textarea id="phcat-notes" placeholder="Optional delivery notes…" style="min-height:60px"></textarea></div>`,
+      `<button class="btn btn-s" onclick="A.closeModal()">Cancel</button><button class="btn btn-p" onclick="A.submitPhCatalogOrder()"><span class="material-icons-round">send</span>Confirm Order</button>`,
+      'mdl-lg');
+  },
+
+  async submitPhCatalogOrder(){
+    const items=Object.entries(this._phCart).filter(([,q])=>q>0).map(([pid,qty])=>{
+      const p=this.data.products.find(pr=>pr.id==pid);
+      return p?{name:p.name,qty,up:+p.price,tot:(+p.price)*qty}:null;
+    }).filter(Boolean);
+    if(!items.length){this.toast('Cart is empty','err');return;}
+    const ph=this.data.pharmacies.find(p=>p.id===this.st.user.phId);
+    const del=ph?.plan==='1500'?'free':'paid';
+    const sub=items.reduce((s,i)=>s+i.tot,0),gst=sub*.05,tot=sub+gst;
+    const ord={id:'ORD-'+Date.now(),type:'inventory',phId:ph.id,phName:ph.name,drugs:items,sub,gst,tot,date:new Date().toLocaleDateString('en-CA'),status:'pending',del,notes:Q('#phcat-notes')?.value||'',billed:false};
+    const res=await apiPost('/orders',ord);
+    if(res?.ok){ord.id=res.id;this.data.orders.push(ord);this.addNotif('order','New order from '+ph.name+': '+ord.id,true);}
+    this._phCart={};
+    this.closeModal();
+    this.toast('Order placed successfully!','ok',items.length+' items · ₹'+this.fmt(tot));
+    this.nav('orders');
   },
 
   async loadAdminProducts(){
