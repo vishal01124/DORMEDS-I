@@ -584,17 +584,64 @@ const A = {
       this.data.bills.push(bill);
       this.save();
       this.closeModal();
-      this.addNotif('payment','Bill '+res.id+' created for '+ph.name+' – ₹'+this.fmt(amt),false,phId);
+      this.addNotif('payment','Bill '+res.id+' created for '+ph.name+' \u2013 \u20b9'+this.fmt(amt),false,phId);
       this.toast('Bill created!','ok',res.id);
       this.nav('billing');
     } else {
-      this.toast('Failed to create bill – server error','err');
+      this.toast('Failed to create bill \u2013 server error','err');
     }
   },
   vBill(id){
     const b=this.data.bills.find(b=>b.id===id);if(!b)return;
-    this.showModal('Bill – '+b.id,`<div style="font-family:monospace;background:var(--inp);border:1px solid var(--bdr);border-radius:var(--r);padding:20px"><div style="display:flex;justify-content:space-between;margin-bottom:20px"><div><div style="font-size:1.25rem;font-weight:800;color:var(--acc)">PharmaDist Pro</div><div style="font-size:.8rem;color:var(--txt2)">${this.data.dist.address}</div><div style="font-size:.8rem;color:var(--txt2)">GST: ${this.data.dist.gst}</div></div><div style="text-align:right"><div style="font-size:1.25rem;font-weight:800">TAX INVOICE</div><div style="color:var(--mute)">${b.id}</div><div style="margin-top:4px">${b.status==='paid'?'<span class="badge b-ok" style="font-size:.875rem">PAID</span>':'<span class="badge b-err" style="font-size:.875rem">UNPAID</span>'}</div></div></div><div style="border-top:1px solid var(--bdr);padding-top:14px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Billed To:</span><span style="font-weight:700">${b.phName}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Date:</span><span>${b.date}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Due:</span><span>${b.due}</span></div>${b.paid?`<div style="display:flex;justify-content:space-between"><span>Paid on:</span><span style="color:var(--ok)">${b.paid}</span></div>`:''}</div><div style="text-align:right;font-size:1.5rem;font-weight:800;color:var(--acc)">Total: ₹${this.fmt(b.amt)}</div></div>`,
-    `<button class="btn btn-s" onclick="A.closeModal()">Close</button><button class="btn btn-sm btn-s" onclick="A.shareBillWA('${b.id}')"><span class="material-icons-round">share</span>WhatsApp</button><button class="btn btn-sm btn-s" onclick="A.shareBillWA('${b.id}')"><span class="material-icons-round">share</span>WhatsApp</button><button class="btn btn-s" onclick="A.printBill('${b.id}')"><span class="material-icons-round">print</span>Print</button>${b.status==='unpaid'?`<button class="btn btn-ok" onclick="A.closeModal();A.markPaid('${b.id}')">Mark Paid</button>`:''}${b.status==='pending_verification'?`<div style="margin-bottom:10px;padding:10px;background:rgba(255,181,71,.1);border:1px solid var(--warn);border-radius:8px;font-size:.875rem"><strong>UTR:</strong> ${b.utr||'—'} <span class="badge b-gray" style="margin-left:6px">${b.payMethod||'UPI'}</span></div><button class="btn btn-ok" onclick="A.closeModal();A.verifyPayment('${b.id}')"><span class="material-icons-round">verified</span>Confirm Payment</button>`:''}`)
+    const d=this.data.dist;
+    const ph=this.data.pharmacies.find(p=>p.id===b.phId)||{};
+    const body=`<div style="font-family:Inter,Arial,sans-serif;background:var(--inp);border:1px solid var(--bdr);border-radius:var(--r);padding:22px">
+      <!-- Header: Distributor + Invoice -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--acc)">
+        <div>
+          <div style="font-size:1.3rem;font-weight:800;color:var(--acc)">${d.name||'PharmaDist Pro'}</div>
+          <div style="font-size:.78rem;color:var(--txt2);margin-top:3px">${d.address||'—'}</div>
+          <div style="font-size:.78rem;color:var(--txt2);margin-top:2px">📞 ${d.phone||d.mobile||'—'}</div>
+          <div style="font-size:.78rem;color:var(--txt2);margin-top:2px">📧 ${d.email||'—'}</div>
+          ${d.gst?`<div style="font-size:.78rem;color:var(--txt2);margin-top:2px">GST: <strong>${d.gst}</strong></div>`:''}
+          ${d.license?`<div style="font-size:.78rem;color:var(--txt2);margin-top:2px">License: ${d.license}</div>`:''}
+          ${d.upi?`<div style="font-size:.78rem;color:var(--acc);margin-top:3px">UPI: ${d.upi}</div>`:''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:1.1rem;font-weight:800;letter-spacing:1px">TAX INVOICE</div>
+          <div style="font-family:monospace;color:var(--mute);font-size:.85rem;margin-top:4px">${b.id}</div>
+          <div style="margin-top:8px">${b.status==='paid'?'<span class="badge b-ok" style="font-size:.85rem">✔ PAID</span>':b.status==='pending_verification'?'<span class="badge b-warn" style="font-size:.85rem">⏳ VERIFYING</span>':'<span class="badge b-err" style="font-size:.85rem">✗ UNPAID</span>'}</div>
+        </div>
+      </div>
+      <!-- Billed To + Dates -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
+        <div style="background:rgba(108,99,255,.06);border-radius:8px;padding:12px">
+          <div style="font-size:.68rem;color:var(--mute);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Billed To</div>
+          <div style="font-weight:700;color:var(--txt)">${b.phName}</div>
+          ${ph.address?`<div style="font-size:.78rem;color:var(--txt2);margin-top:3px">${ph.address}</div>`:''}
+          ${ph.contact?`<div style="font-size:.78rem;color:var(--txt2);margin-top:2px">📞 ${ph.contact}</div>`:''}
+          ${ph.email?`<div style="font-size:.78rem;color:var(--txt2);margin-top:2px">📧 ${ph.email}</div>`:''}
+          ${ph.license?`<div style="font-size:.78rem;color:var(--txt2);margin-top:2px">Lic: ${ph.license}</div>`:''}
+        </div>
+        <div style="background:rgba(108,99,255,.06);border-radius:8px;padding:12px">
+          <div style="font-size:.68rem;color:var(--mute);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Invoice Details</div>
+          <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:5px"><span style="color:var(--mute)">Invoice Date</span><strong>${b.date||'—'}</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:5px"><span style="color:var(--mute)">Due Date</span><strong style="color:${b.status!=='paid'?'var(--err)':'var(--ok)'}">${b.due||'—'}</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:5px"><span style="color:var(--mute)">Type</span><span class="badge b-gray">${b.type||'bulk'}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:.82rem"><span style="color:var(--mute)">Order Ref</span><code style="font-size:.75rem">${b.ordId||'MANUAL'}</code></div>
+          ${b.paid?`<div style="display:flex;justify-content:space-between;font-size:.82rem;margin-top:5px"><span style="color:var(--mute)">Paid On</span><strong style="color:var(--ok)">${b.paid}</strong></div>`:''}
+        </div>
+      </div>
+      <!-- Amount -->
+      <div style="background:linear-gradient(135deg,rgba(108,99,255,.1),rgba(0,212,255,.08));border:1px solid rgba(108,99,255,.25);border-radius:10px;padding:16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:${d.upi&&b.status!=='paid'?12:0}px">
+        <div style="font-size:.875rem;color:var(--mute)">Total Amount Due</div>
+        <div style="font-size:1.75rem;font-weight:800;color:var(--acc)">₹${this.fmt(b.amt)}</div>
+      </div>
+      <!-- UPI Payment hint -->
+      ${d.upi&&b.status!=='paid'?`<div style="background:rgba(0,212,142,.06);border:1px solid rgba(0,212,142,.25);border-radius:8px;padding:10px 14px;font-size:.8rem;display:flex;align-items:center;gap:8px"><span class="material-icons-round" style="font-size:18px;color:var(--ok)">qr_code</span><span>Pay via UPI: <strong>${d.upi}</strong> and submit UTR reference</span></div>`:''}
+    </div>`;
+    const foot=`<button class="btn btn-s" onclick="A.closeModal()">Close</button><button class="btn btn-sm btn-s" onclick="A.shareBillWA('${b.id}')"><span class="material-icons-round">share</span>WhatsApp</button><button class="btn btn-s" onclick="A.printBill('${b.id}')"><span class="material-icons-round">print</span>Print</button>${b.status==='unpaid'?`<button class="btn btn-ok" onclick="A.closeModal();A.markPaid('${b.id}')">Mark Paid</button>`:''}${b.status==='pending_verification'?`<div style="margin-bottom:10px;padding:10px;background:rgba(255,181,71,.1);border:1px solid var(--warn);border-radius:8px;font-size:.875rem"><strong>UTR:</strong> ${b.utr||'—'} <span class="badge b-gray" style="margin-left:6px">${b.payMethod||'UPI'}</span></div><button class="btn btn-ok" onclick="A.closeModal();A.verifyPayment('${b.id}')"><span class="material-icons-round">verified</span>Confirm Payment</button>`:''}`;
+    this.showModal('Invoice – '+b.id,body,foot,'mdl-lg');
   },
 
   // ===== ADMIN RETURNS =====
