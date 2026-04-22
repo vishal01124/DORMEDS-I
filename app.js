@@ -547,7 +547,25 @@ const A = {
     this.showModal('Create Manual Bill',`<div class="fg"><label>Pharmacy</label><select id="nb-ph">${this.data.pharmacies.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select></div><div class="fr"><div class="fg"><label>Amount (₹)</label><input id="nb-amt" type="number" min="0" step="0.01" placeholder="0.00"></div><div class="fg"><label>Type</label><select id="nb-type"><option value="individual">Individual</option><option value="bulk">Bulk</option></select></div></div><div class="fr"><div class="fg"><label>Bill Date</label><input id="nb-d" type="date" value="${new Date().toLocaleDateString('en-CA')}"></div><div class="fg"><label>Due Date</label><input id="nb-due" type="date" value="${new Date(Date.now()+15*864e5).toLocaleDateString('en-CA')}"></div></div>`,
     `<button class="btn btn-s" onclick="A.closeModal()">Cancel</button><button class="btn btn-p" onclick="A.saveManualBill()">Create</button>`);
   },
-  saveManualBill(){const phId=Q('#nb-ph')?.value,amt=parseFloat(Q('#nb-amt')?.value);if(!phId||!amt){this.toast('Fill all fields','err');return;}const ph=this.data.pharmacies.find(p=>p.id===phId);this.data.bills.push({id:'BILL-'+Date.now(),phId,phName:ph.name,ordId:'MANUAL',amt,date:Q('#nb-d').value,due:Q('#nb-due').value,status:'unpaid',type:Q('#nb-type').value,paid:null});this.save();this.closeModal();this.toast('Bill created!','ok');this.nav('billing');},
+  async saveManualBill(){
+    const phId=Q('#nb-ph')?.value,amt=parseFloat(Q('#nb-amt')?.value);
+    if(!phId||!amt){this.toast('Fill required fields','err');return;}
+    const ph=this.data.pharmacies.find(p=>p.id===phId);
+    if(!ph){this.toast('Pharmacy not found','err');return;}
+    const bill={phId,phName:ph.name,ordId:'MANUAL',amt,date:Q('#nb-d').value,due:Q('#nb-due').value,type:Q('#nb-type').value||'bulk'};
+    const res=await apiPost('/bills',bill);
+    if(res?.ok){
+      bill.id=res.id;bill.status='unpaid';bill.paid=null;
+      this.data.bills.push(bill);
+      this.save();
+      this.closeModal();
+      this.addNotif('payment','Bill '+res.id+' created for '+ph.name+' – ₹'+this.fmt(amt),false,phId);
+      this.toast('Bill created!','ok',res.id);
+      this.nav('billing');
+    } else {
+      this.toast('Failed to create bill – server error','err');
+    }
+  },
   vBill(id){
     const b=this.data.bills.find(b=>b.id===id);if(!b)return;
     this.showModal('Bill – '+b.id,`<div style="font-family:monospace;background:var(--inp);border:1px solid var(--bdr);border-radius:var(--r);padding:20px"><div style="display:flex;justify-content:space-between;margin-bottom:20px"><div><div style="font-size:1.25rem;font-weight:800;color:var(--acc)">PharmaDist Pro</div><div style="font-size:.8rem;color:var(--txt2)">${this.data.dist.address}</div><div style="font-size:.8rem;color:var(--txt2)">GST: ${this.data.dist.gst}</div></div><div style="text-align:right"><div style="font-size:1.25rem;font-weight:800">TAX INVOICE</div><div style="color:var(--mute)">${b.id}</div><div style="margin-top:4px">${b.status==='paid'?'<span class="badge b-ok" style="font-size:.875rem">PAID</span>':'<span class="badge b-err" style="font-size:.875rem">UNPAID</span>'}</div></div></div><div style="border-top:1px solid var(--bdr);padding-top:14px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Billed To:</span><span style="font-weight:700">${b.phName}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Date:</span><span>${b.date}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Due:</span><span>${b.due}</span></div>${b.paid?`<div style="display:flex;justify-content:space-between"><span>Paid on:</span><span style="color:var(--ok)">${b.paid}</span></div>`:''}</div><div style="text-align:right;font-size:1.5rem;font-weight:800;color:var(--acc)">Total: ₹${this.fmt(b.amt)}</div></div>`,
@@ -920,12 +938,24 @@ const A = {
   },
 
   async saveDistSettings(){
-    const d={name:Q('#ds-name')?.value.trim(),phone:Q('#ds-phone')?.value.trim(),email:Q('#ds-email')?.value.trim(),upi:Q('#ds-upi')?.value.trim(),gst:Q('#ds-gst')?.value.trim(),license:Q('#ds-lic')?.value.trim(),address:Q('#ds-addr')?.value.trim()};
-    // Remove empty values
-    Object.keys(d).forEach(k=>{if(!d[k])delete d[k];});
+    const upi=(Q('#ds-upi')?.value||'').trim();
+    if(!upi){this.toast('Enter a UPI ID first','err');return;}
+    const d={
+      name:(Q('#ds-name')?.value||this.data.dist.name||'').trim(),
+      phone:(Q('#ds-phone')?.value||this.data.dist.phone||'').trim(),
+      email:(Q('#ds-email')?.value||this.data.dist.email||'').trim(),
+      upi,
+      gst:(Q('#ds-gst')?.value||this.data.dist.gst||'').trim(),
+      license:(Q('#ds-lic')?.value||this.data.dist.license||'').trim(),
+      address:(Q('#ds-addr')?.value||this.data.dist.address||'').trim(),
+    };
+    this.toast('Saving...','ok');
     const res=await apiPost('/dist-settings',d);
-    if(res?.ok){Object.assign(this.data.dist,d);this.toast('Settings saved! UPI: '+this.data.dist.upi,'ok');}
-    else{this.toast('Failed to save settings – check server','err');}
+    console.log('dist-settings res:',res);
+    // Always update local data so QR codes work immediately
+    Object.assign(this.data.dist,d);
+    if(res?.ok){this.toast('\u2714 Saved! UPI: '+d.upi,'ok');}
+    else{this.toast('Saved locally (server may retry)','warn');}
   },
 
 
