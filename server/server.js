@@ -1201,6 +1201,40 @@ async function main() {
     console.log('  🗄️  DB: ' + (process.env.DATABASE_URL ? 'Railway PostgreSQL ✅' : 'LOCAL — set DATABASE_URL'));
     console.log(line + '\n');
   });
+
+  // ── Supabase Keep-Alive ────────────────────────────────────────
+  // Pings Supabase every 3 days to prevent free-tier project pause.
+  // Set SUPABASE_URL and SUPABASE_ANON_KEY env vars in Railway.
+  const SUPABASE_URL      = process.env.SUPABASE_URL      || '';
+  const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+  const PING_INTERVAL_MS  = 3 * 24 * 60 * 60 * 1000; // 3 days
+
+  async function pingSupabase() {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.log('ℹ️  Supabase keep-alive: SUPABASE_URL / SUPABASE_ANON_KEY not set — skipping.');
+      return;
+    }
+    try {
+      // Simple lightweight REST query — reads at most 1 row from any table
+      const url = `${SUPABASE_URL}/rest/v1/?apikey=${SUPABASE_ANON_KEY}`;
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        signal: AbortSignal.timeout(15000),
+      });
+      console.log(`💓 Supabase keep-alive ping — status: ${res.status} — ${new Date().toISOString()}`);
+    } catch (err) {
+      console.warn('⚠️  Supabase keep-alive ping failed:', err.message);
+    }
+  }
+
+  // Ping immediately on startup, then every 3 days
+  pingSupabase();
+  setInterval(pingSupabase, PING_INTERVAL_MS);
+  console.log('💓 Supabase keep-alive scheduler started (every 3 days)');
 }
 
 main().catch(e => { console.error('Failed to start:', e); process.exit(1); });
