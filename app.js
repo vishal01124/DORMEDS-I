@@ -1142,36 +1142,46 @@ const A = {
     const note=encodeURIComponent('Bill '+b.id);
     const amt=encodeURIComponent((+b.amt).toFixed(2));
     const upiUrl='upi://pay?pa='+encodeURIComponent(upi)+'&pn='+pn+'&am='+amt+'&cu=INR&tn='+note;
+    const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data='+encodeURIComponent(upiUrl);
     const rupee='\u20b9';
-    // STEP 1 — ultra-minimal modal, just amount + big UPI button
-    const body=`<div style="text-align:center;padding:10px 0 6px">
-      <div style="font-size:.82rem;color:var(--mute);margin-bottom:6px">${b.id} &bull; Due Payment</div>
-      <div style="font-size:2.8rem;font-weight:900;color:var(--acc);margin-bottom:4px">${rupee}${this.fmt(b.amt)}</div>
-      <div style="font-size:.78rem;color:var(--mute);margin-bottom:22px">Pay to: <strong style="color:var(--txt)">${this.data.dist.name}</strong></div>
-      <a href="${upiUrl}" id="upi-btn"
-        style="display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;
-               background:linear-gradient(135deg,#00D48E,#1a73e8);color:#fff;
-               font-weight:800;font-size:1.1rem;padding:18px 0;border-radius:14px;
-               width:100%;margin-bottom:14px;letter-spacing:.3px;
-               box-shadow:0 6px 24px rgba(0,180,120,.5)"
-        onclick="setTimeout(()=>A._afterUPIOpen('${id}'),1500)">
-        <span class="material-icons-round" style="font-size:24px">open_in_new</span>
-        Open UPI App
-      </a>
-      <div style="display:flex;align-items:center;gap:8px;background:var(--inp);border-radius:10px;padding:10px 14px;margin-bottom:6px">
-        <span class="material-icons-round" style="color:var(--mute);font-size:18px">account_balance_wallet</span>
-        <div style="flex:1;text-align:left">
-          <div style="font-size:.68rem;color:var(--mute)">UPI ID</div>
-          <div style="font-family:monospace;font-weight:700;color:var(--acc);font-size:.9rem">${upi}</div>
+    const body=`<div style="text-align:center;padding:8px 0 4px">
+      <div style="font-size:.78rem;color:var(--mute);margin-bottom:4px">${b.id} &bull; Due Payment</div>
+      <div style="font-size:2.6rem;font-weight:900;color:var(--acc);margin-bottom:2px">${rupee}${this.fmt(b.amt)}</div>
+      <div style="font-size:.78rem;color:var(--mute);margin-bottom:16px">Pay to: <strong style="color:var(--txt)">${this.data.dist.name||'PharmaDist'}</strong></div>
+
+      <div style="background:#fff;border-radius:16px;padding:12px;display:inline-block;margin-bottom:14px;box-shadow:0 4px 20px rgba(0,0,0,.15)">
+        <img src="${qrUrl}" alt="UPI QR Code"
+          style="width:200px;height:200px;display:block;border-radius:8px"
+          onerror="this.outerHTML='<div style=\'width:200px;height:200px;display:flex;align-items:center;justify-content:center;background:#f5f5f5;border-radius:8px;color:#999;font-size:.8rem\'>QR unavailable<br>Use UPI ID below</div>'"
+        >
+      </div>
+      <div style="font-size:.75rem;color:var(--mute);margin-bottom:14px">📷 Scan with GPay / PhonePe / Paytm / Any UPI app</div>
+
+      <div style="display:flex;align-items:center;gap:8px;background:var(--inp);border:1px solid var(--bdr);border-radius:10px;padding:10px 14px;margin-bottom:14px;text-align:left">
+        <span class="material-icons-round" style="color:var(--acc);font-size:20px">account_balance_wallet</span>
+        <div style="flex:1">
+          <div style="font-size:.65rem;color:var(--mute);margin-bottom:2px">UPI ID</div>
+          <div style="font-family:monospace;font-weight:700;color:var(--acc)">${upi}</div>
         </div>
-        <button class="btn btn-sm btn-s" onclick="navigator.clipboard.writeText('${upi}').then(()=>A.toast('Copied!','ok'))">
+        <button class="btn btn-sm btn-s" onclick="navigator.clipboard.writeText('${upi}').then(()=>A.toast('UPI ID Copied!','ok'))">
           <span class="material-icons-round" style="font-size:16px">content_copy</span>
         </button>
       </div>
+
+      <a href="${upiUrl}" id="upi-btn"
+        style="display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;
+               background:linear-gradient(135deg,#00D48E,#1a73e8);color:#fff;
+               font-weight:800;font-size:1rem;padding:15px 0;border-radius:12px;
+               width:100%;letter-spacing:.3px;box-shadow:0 6px 24px rgba(0,180,120,.45)"
+        onclick="setTimeout(()=>A._afterUPIOpen('${id}'),1500)">
+        <span class="material-icons-round" style="font-size:22px">open_in_new</span>
+        Open UPI App
+      </a>
+      <div style="font-size:.72rem;color:var(--mute);margin-top:8px">Opens GPay / PhonePe / Paytm automatically</div>
     </div>`;
     const foot=`<button class="btn btn-s" onclick="A.closeModal()">Cancel</button>
       <button class="btn btn-p" onclick="A._afterUPIOpen('${id}')"><span class="material-icons-round">check_circle</span>I've Paid</button>`;
-    this.showModal('\ud83d\udcb3 Pay via UPI',body,foot,'mdl-sm');
+    this.showModal('\ud83d\udcb3 Pay via UPI',body,foot);
   },
 
   _afterUPIOpen(id){
