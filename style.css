@@ -52,6 +52,7 @@ body{
   -moz-osx-font-smoothing:grayscale;
   -webkit-tap-highlight-color:transparent;
   -webkit-text-size-adjust:100%;
+  -moz-text-size-adjust:100%;
   text-size-adjust:100%;
   touch-action:manipulation;
 }
@@ -451,7 +452,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .mh h2{font-size:1.0625rem;color:var(--txt)}
 .mb2{padding:22px;overflow-y:auto;flex:1}
 .mf{padding:14px 22px;border-top:1px solid var(--bdr);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;flex-wrap:wrap}
-.mf .btn,.mf a.btn{min-width:-webkit-fill-available;min-width:fit-content;flex-shrink:0}
+.mf .btn,.mf a.btn{min-width:0;flex-shrink:0}
 
 /* ============================================================
    TABS & FILTERS
@@ -635,7 +636,7 @@ tr.inv-low td:nth-child(4){color:var(--err)!important;font-weight:700}
   .phg{grid-template-columns:1fr}
   .lcard{padding:24px}
   .login-page{align-items:flex-start;padding:10px}
-  .lsplit{min-height:auto}
+  .lsplit{min-height:0;min-height:auto}
   /* Subscription & plan cards full width */
   .plans{grid-template-columns:1fr}
   /* Info grids to single column */
@@ -846,7 +847,7 @@ tr.inv-low td:nth-child(4){color:var(--err)!important;font-weight:700}
 
 /* ─── Login page responsive adjustments ──────────────────── */
 @media(max-width:760px){
-  .lsplit{flex-direction:column;max-width:460px;min-height:auto}
+  .lsplit{flex-direction:column;max-width:460px;min-height:0;min-height:auto}
   .lbrand{
     padding:22px 24px 16px;
     border-right:none;border-bottom:1px solid rgba(108,99,255,.18);
@@ -893,7 +894,7 @@ tr.inv-low td:nth-child(4){color:var(--err)!important;font-weight:700}
   #sessions-list > div{flex-direction:column!important;align-items:flex-start!important;gap:8px}
   #sessions-list .btn{align-self:flex-end}
   /* Audit table scroll */
-  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tw{overflow-x:auto}
   #audit-body td{white-space:nowrap;font-size:.75rem}
   /* Profile avatar smaller */
   .sav[style*="width:56px"]{width:42px!important;height:42px!important;font-size:1.1rem!important}

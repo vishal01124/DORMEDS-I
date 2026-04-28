@@ -131,6 +131,11 @@ footer{border-top:1px solid var(--bdr);padding:40px 40px 32px;display:flex;align
   .hero h1{font-size:2.25rem}
   .section{padding:64px 16px}
 }
+.hero-icon-sm{font-size:20px}
+.price-amount-custom{font-size:2rem}
+.cta-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.foot-icon-sm{width:32px;height:32px;font-size:17px}
+.foot-brand{font-size:.9375rem;font-weight:800;color:var(--txt)}
 </style>
 </head>
 <body>
@@ -159,11 +164,11 @@ footer{border-top:1px solid var(--bdr);padding:40px 40px 32px;display:flex;align
     <p class="hero-sub">PharmaDist Pro connects distributors and pharmacies on a single secure platform. Manage inventory, process orders, track billing and subscriptions — all in real time.</p>
     <div class="hero-btns">
       <a class="btn-hero btn-hero-p" href="/index.html">
-        <span class="material-icons-round" style="font-size:20px">rocket_launch</span>
+        <span class="material-icons-round hero-icon-sm">rocket_launch</span>
         Get Started Free
       </a>
       <a class="btn-hero btn-hero-s" href="/products.html">
-        <span class="material-icons-round" style="font-size:20px">inventory_2</span>
+        <span class="material-icons-round hero-icon-sm">inventory_2</span>
         View Product Catalog
       </a>
     </div>
@@ -279,7 +284,7 @@ footer{border-top:1px solid var(--bdr);padding:40px 40px 32px;display:flex;align
     </div>
     <div class="price-card">
       <div class="price-name">Enterprise</div>
-      <div class="price-amount" style="font-size:2rem">Custom</div>
+      <div class="price-amount price-amount-custom">Custom</div>
       <div class="price-period">contact us</div>
       <ul class="price-features">
         <li><span class="material-icons-round">check</span>Everything in Premium</li>
@@ -296,17 +301,17 @@ footer{border-top:1px solid var(--bdr);padding:40px 40px 32px;display:flex;align
 <div class="cta-wrap">
   <h2>Ready to transform your<br>distribution network?</h2>
   <p>Join pharmacies already managing their inventory smarter with PharmaDist Pro.</p>
-  <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
-    <a class="btn-hero btn-hero-p" href="/index.html"><span class="material-icons-round" style="font-size:20px">rocket_launch</span>Launch App</a>
-    <a class="btn-hero btn-hero-s" href="/products.html"><span class="material-icons-round" style="font-size:20px">inventory_2</span>Browse Catalog</a>
+  <div class="cta-btns">
+    <a class="btn-hero btn-hero-p" href="/index.html"><span class="material-icons-round hero-icon-sm">rocket_launch</span>Launch App</a>
+    <a class="btn-hero btn-hero-s" href="/products.html"><span class="material-icons-round hero-icon-sm">inventory_2</span>Browse Catalog</a>
   </div>
 </div>
 
 <!-- FOOTER -->
 <footer>
   <div class="foot-logo">
-    <div class="nav-icon" style="width:32px;height:32px;font-size:17px"><span class="material-icons-round">local_pharmacy</span></div>
-    <span style="font-size:.9375rem;font-weight:800;color:var(--txt)">PharmaDist Pro</span>
+    <div class="nav-icon foot-icon-sm"><span class="material-icons-round">local_pharmacy</span></div>
+    <span class="foot-brand">PharmaDist Pro</span>
   </div>
   <div class="foot-links">
     <a href="/index.html">Admin Login</a>

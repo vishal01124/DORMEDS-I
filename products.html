@@ -150,6 +150,12 @@ footer a:hover{text-decoration:underline}
   .stats-bar{gap:16px}
   .stat-val{font-size:1.4rem}
 }
+.stat-val-ok{color:var(--ok)}
+.stat-val-err{color:var(--err)}
+.stat-val-warn{color:var(--warn)}
+.nav-icon-sm{font-size:17px}
+.hero-badge-icon{font-size:14px}
+.state-fullspan{grid-column:1/-1}
 </style>
 </head>
 <body>
@@ -162,7 +168,7 @@ footer a:hover{text-decoration:underline}
   </a>
   <div class="nav-right">
     <a class="nav-btn nav-btn-s" href="/">
-      <span class="material-icons-round" style="font-size:17px">arrow_back</span>Sign In
+      <span class="material-icons-round nav-icon-sm">arrow_back</span>Sign In
     </a>
   </div>
 </nav>
@@ -170,16 +176,16 @@ footer a:hover{text-decoration:underline}
 <!-- HERO -->
 <section class="hero">
   <div class="hero-badge">
-    <span class="material-icons-round" style="font-size:14px">verified</span>
+    <span class="material-icons-round hero-badge-icon">verified</span>
     Live Product Catalog
   </div>
   <h1>Medicine & <span>Product Catalog</span></h1>
   <p>Browse our complete pharmaceutical inventory. Check real-time availability, pricing, and expiry information.</p>
   <div class="stats-bar" id="stats-bar">
     <div class="stat-item"><div class="stat-val" id="stat-total">—</div><div class="stat-lbl">Total Products</div></div>
-    <div class="stat-item"><div class="stat-val" id="stat-instock" style="color:var(--ok)">—</div><div class="stat-lbl">In Stock</div></div>
-    <div class="stat-item"><div class="stat-val" id="stat-outstock" style="color:var(--err)">—</div><div class="stat-lbl">Out of Stock</div></div>
-    <div class="stat-item"><div class="stat-val" id="stat-expiring" style="color:var(--warn)">—</div><div class="stat-lbl">Near Expiry</div></div>
+    <div class="stat-item"><div class="stat-val" id="stat-instock" class="stat-val-ok">—</div><div class="stat-lbl">In Stock</div></div>
+    <div class="stat-item"><div class="stat-val" id="stat-outstock" class="stat-val-err">—</div><div class="stat-lbl">Out of Stock</div></div>
+    <div class="stat-item"><div class="stat-val" id="stat-expiring" class="stat-val-warn">—</div><div class="stat-lbl">Near Expiry</div></div>
   </div>
 </section>
 
@@ -219,7 +225,7 @@ footer a:hover{text-decoration:underline}
 <!-- GRID -->
 <div class="grid-wrap">
   <div class="prod-grid" id="prod-grid">
-    <div class="state-box" style="grid-column:1/-1">
+    <div class="state-box state-fullspan">
       <span class="material-icons-round spin-icon">autorenew</span>
       <h3>Loading catalog…</h3>
       <p>Fetching products from the server</p>
