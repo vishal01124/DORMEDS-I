@@ -636,7 +636,7 @@ const A = {
     const b=this.data.bills;const tp=b.filter(x=>x.status==='paid').reduce((s,x)=>s+x.amt,0);const tu=b.filter(x=>x.status==='unpaid').reduce((s,x)=>s+x.amt,0);
     return`<div class="ph"><div class="pt"><h1>Billing</h1><p>All pharmacy bills and payments.</p></div><button class="btn btn-p" onclick="A.newBillModal()"><span class="material-icons-round">add</span>Create Bill</button></div>
     <div class="sg" style="grid-template-columns:repeat(3,1fr)"><div class="sc g"><div class="sic g"><span class="material-icons-round">check_circle</span></div><div><div class="sv">₹${this.fmt(tp)}</div><div class="sl2">Collected</div></div></div><div class="sc o"><div class="sic o"><span class="material-icons-round">pending_actions</span></div><div><div class="sv">₹${this.fmt(tu)}</div><div class="sl2">Pending</div></div></div><div class="sc p"><div class="sic p"><span class="material-icons-round">receipt_long</span></div><div><div class="sv">${b.length}</div><div class="sl2">Total Bills</div></div></div></div>
-    <div class="card"><div class="ch"><h3>All Bills</h3><select onchange="A.fBills(this.value)" style="padding:5px 11px;background:var(--inp);border:1px solid var(--bdr);border-radius:var(--rs);color:var(--txt);font-family:inherit"><option value="all">All</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select></div><div class="tw"><table id="bt"><thead><tr><th>Bill ID</th><th>Pharmacy</th><th>Order</th><th>Amount</th><th>Date</th><th>Due</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody>${b.map(x=>`<tr data-s="${x.status}"><td style="font-family:monospace;font-size:.8rem">${x.id}</td><td>${x.phName}</td><td style="font-family:monospace;font-size:.8rem">${x.ordId}</td><td style="font-weight:700;color:var(--txt)">₹${this.fmt(x.amt)}</td><td>${x.date}</td><td>${x.due}</td><td><span class="badge b-gray">${x.type}</span></td><td>${x.status==='paid'?'<span class="badge b-ok">Paid</span>':'<span class="badge b-err">Unpaid</span>'}</td><td><div class="ta"><button class="btn btn-sm btn-s" onclick="A.vBill('${x.id}')">View</button>${x.status==='unpaid'?`<button class="btn btn-sm btn-ok" onclick="A.markPaid('${x.id}')">Mark Paid</button>`:''}${x.status==='pending_verification'?`<button class="btn btn-sm btn-warn" onclick="A.vBill('${x.id}')">Verify UTR</button>`:''}</div></td></tr>`).join('')}</tbody></table></div></div>`;
+    <div class="card"><div class="ch"><h3>All Bills</h3><select onchange="A.fBills(this.value)" style="padding:5px 11px;background:var(--inp);border:1px solid var(--bdr);border-radius:var(--rs);color:var(--txt);font-family:inherit"><option value="all">All</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option><option value="pending_verification">Pending Verification</option></select></div><div class="tw"><table id="bt"><thead><tr><th>Bill ID</th><th>Pharmacy</th><th>Ref</th><th>Amount</th><th>Date</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody>${b.map(x=>`<tr data-s="${x.status}"><td style="font-family:monospace;font-size:.8rem">${x.id}</td><td>${x.phName}</td><td style="font-family:monospace;font-size:.8rem">${x.ordId}</td><td style="font-weight:700;color:var(--txt)">₹${this.fmt(x.amt)}</td><td>${x.date}</td><td><span class="badge ${x.type==='subscription'?'b-info':'b-gray'}">${x.type==='subscription'?'📋 Subscription':x.type}</span></td><td>${x.status==='paid'?'<span class="badge b-ok">Paid</span>':x.status==='pending_verification'?'<span class="badge b-warn">⏳ Verifying</span>':'<span class="badge b-err">Unpaid</span>'}</td><td><div class="ta"><button class="btn btn-sm btn-s" onclick="A.vBill('${x.id}')">View</button>${x.status==='unpaid'?`<button class="btn btn-sm btn-ok" onclick="A.markPaid('${x.id}')">Mark Paid</button>`:''}${x.status==='pending_verification'&&x.type==='subscription'?`<button class="btn btn-sm btn-ok" onclick="A.verifySubPayment('${x.id}')"><span class="material-icons-round" style="font-size:14px">verified</span>Activate Plan</button>`:x.status==='pending_verification'?`<button class="btn btn-sm btn-warn" onclick="A.vBill('${x.id}')">Verify UTR</button>`:''}</div></td></tr>`).join('')}</tbody></table></div></div>`;
   },
   fBills(s){QA('#bt tbody tr').forEach(r=>{r.style.display=(s==='all'||r.dataset.s===s)?'':'none';});},
   async markPaid(id){const b=this.data.bills.find(b=>b.id===id);if(!b)return;const paid=new Date().toLocaleDateString('en-CA');await apiPut('/bills/'+id,{status:'paid',paid});b.status='paid';b.paid=paid;this.toast('Bill '+id+' marked paid!','ok');this.nav('billing');},
@@ -1295,12 +1295,160 @@ const A = {
   // ===== PHARMACY SUBSCRIPTIONS =====
   rPhSubs(){
     const phId=this.st.user.phId;const ph=this.data.pharmacies.find(p=>p.id===phId);
-    return`<div class="ph"><div class="pt"><h1>Subscription</h1><p>Your current plan and billing.</p></div></div>
-    ${ph?.plan?`<div class="card" style="margin-bottom:22px;border-color:var(--acc);background:linear-gradient(135deg,rgba(108,99,255,.1),var(--card))"><div class="cb" style="display:flex;align-items:center;gap:20px"><div style="flex:1"><div style="font-size:.8rem;color:var(--acc);font-weight:700;text-transform:uppercase;margin-bottom:4px">Active Plan</div><div style="font-size:2rem;font-weight:800;color:var(--txt)">₹${ph.plan}<span style="font-size:1rem;color:var(--mute)">/month</span></div><div style="color:var(--txt2);margin-top:4px">${ph.plan==='1500'?'Free delivery on all orders':'Paid delivery on orders'}</div><div style="font-size:.8rem;color:var(--mute);margin-top:4px">Expires: ${ph.planExpiry}</div>${ph.waived?'<div style="margin-top:8px"><span class="badge b-ok">Fee Waived by Admin</span></div>':''}</div><span class="material-icons-round" style="font-size:64px;color:var(--accL);color:rgba(108,99,255,.3)">verified</span></div></div>`:'<div class="card" style="margin-bottom:22px;border-color:var(--err)"><div class="cb" style="text-align:center;padding:32px"><span class="material-icons-round" style="font-size:48px;color:var(--mute)">card_membership</span><h3 style="margin-top:10px;color:var(--txt)">No Active Subscription</h3><p style="margin-top:4px">Choose a plan to start ordering</p></div></div>'}
-    <div class="plans"><div class="plan"><div style="font-size:.8rem;font-weight:700;color:var(--mute);text-transform:uppercase;margin-bottom:7px">Basic</div><div class="pp"><sup>₹</sup>1000</div><div class="per">per month</div><ul class="pf"><li><span class="material-icons-round">check_circle</span>Unlimited Orders</li><li><span class="material-icons-round">check_circle</span>Paid Delivery</li><li><span class="material-icons-round">check_circle</span>Order Tracking</li><li><span class="material-icons-round">check_circle</span>Support Access</li></ul><button class="btn btn-s" style="width:100%;justify-content:center" onclick="A.subscribePlan('1000')">${ph?.plan==='1000'?'✓ Current Plan':'Choose Plan'}</button></div><div class="plan feat"><div style="font-size:.8rem;font-weight:700;color:var(--acc);text-transform:uppercase;margin-bottom:7px">Premium</div><div class="pp" style="color:var(--acc)"><sup>₹</sup>1500</div><div class="per">per month</div><ul class="pf"><li><span class="material-icons-round">check_circle</span>Unlimited Orders</li><li><span class="material-icons-round">check_circle</span>FREE Delivery</li><li><span class="material-icons-round">check_circle</span>Priority Processing</li><li><span class="material-icons-round">check_circle</span>Dedicated Support</li></ul><button class="btn btn-p" style="width:100%;justify-content:center" onclick="A.subscribePlan('1500')">${ph?.plan==='1500'?'✓ Current Plan':'Upgrade to Premium'}</button></div></div>`;
+    // Check for pending sub payment
+    const pendingSub=(this.data.bills||[]).find(b=>b.phId===phId&&b.type==='subscription'&&b.status==='pending_verification');
+    return`<div class="ph"><div class="pt"><h1>Subscription</h1><p>Choose a plan and pay via UPI to activate.</p></div></div>
+    ${pendingSub?`<div class="card" style="margin-bottom:16px;border-color:var(--warn);background:rgba(255,181,71,.06)">
+      <div class="cb" style="display:flex;align-items:center;gap:14px">
+        <span class="material-icons-round" style="font-size:34px;color:var(--warn)">pending_actions</span>
+        <div style="flex:1">
+          <div style="font-weight:700;color:var(--warn)">Payment Under Verification</div>
+          <div style="font-size:.82rem;color:var(--txt2);margin-top:3px">₹${pendingSub.amt}/mo plan · UTR submitted · Admin will activate within 24 hrs</div>
+        </div>
+        <span class="badge b-warn">Pending</span>
+      </div>
+    </div>`:''}
+    ${ph?.plan?`<div class="card" style="margin-bottom:22px;border-color:var(--acc);background:linear-gradient(135deg,rgba(108,99,255,.1),var(--card))"><div class="cb" style="display:flex;align-items:center;gap:20px"><div style="flex:1"><div style="font-size:.8rem;color:var(--acc);font-weight:700;text-transform:uppercase;margin-bottom:4px">Active Plan</div><div style="font-size:2rem;font-weight:800;color:var(--txt)">₹${ph.plan}<span style="font-size:1rem;color:var(--mute)">/month</span></div><div style="color:var(--txt2);margin-top:4px">${ph.plan==='1500'?'Free delivery on all orders':'Paid delivery on orders'}</div><div style="font-size:.8rem;color:var(--mute);margin-top:4px">Expires: ${ph.planExpiry||'—'}</div>${ph.waived?'<div style="margin-top:8px"><span class="badge b-ok">Fee Waived by Admin</span></div>':''}</div><span class="material-icons-round" style="font-size:64px;color:rgba(108,99,255,.3)">verified</span></div></div>`:'<div class="card" style="margin-bottom:22px;border-color:var(--err)"><div class="cb" style="text-align:center;padding:32px"><span class="material-icons-round" style="font-size:48px;color:var(--mute)">card_membership</span><h3 style="margin-top:10px;color:var(--txt)">No Active Subscription</h3><p style="margin-top:4px">Choose a plan below and pay via UPI to activate</p></div></div>'}
+    <div class="plans">
+      <div class="plan">
+        <div style="font-size:.8rem;font-weight:700;color:var(--mute);text-transform:uppercase;margin-bottom:7px">Basic</div>
+        <div class="pp"><sup>₹</sup>1000</div><div class="per">per month</div>
+        <ul class="pf">
+          <li><span class="material-icons-round">check_circle</span>Unlimited Orders</li>
+          <li><span class="material-icons-round">check_circle</span>Paid Delivery</li>
+          <li><span class="material-icons-round">check_circle</span>Order Tracking</li>
+          <li><span class="material-icons-round">check_circle</span>Email Support</li>
+        </ul>
+        ${ph?.plan==='1000'?'<button class="btn btn-s" style="width:100%;justify-content:center" disabled>✓ Current Plan</button>':
+        '<button class="btn btn-s" style="width:100%;justify-content:center" onclick="A.subscribePlan('+"'1000'"+')"><span class="material-icons-round">qr_code</span>Pay ₹1000/mo via UPI</button>'}
+      </div>
+      <div class="plan feat">
+        <div style="font-size:.8rem;font-weight:700;color:var(--acc);text-transform:uppercase;margin-bottom:7px">Premium</div>
+        <div class="pp" style="color:var(--acc)"><sup>₹</sup>1500</div><div class="per">per month</div>
+        <ul class="pf">
+          <li><span class="material-icons-round">check_circle</span>Unlimited Orders</li>
+          <li><span class="material-icons-round">check_circle</span>FREE Delivery</li>
+          <li><span class="material-icons-round">check_circle</span>Priority Processing</li>
+          <li><span class="material-icons-round">check_circle</span>Dedicated Support</li>
+          <li><span class="material-icons-round">check_circle</span>Analytics Access</li>
+        </ul>
+        ${ph?.plan==='1500'?'<button class="btn btn-p" style="width:100%;justify-content:center" disabled>✓ Current Plan</button>':
+        '<button class="btn btn-p" style="width:100%;justify-content:center" onclick="A.subscribePlan('+"'1500'"+')"><span class="material-icons-round">qr_code</span>Pay ₹1500/mo via UPI</button>'}
+      </div>
+    </div>`;
   },
-  async subscribePlan(plan){
-    const ph=this.data.pharmacies.find(p=>p.id===this.st.user.phId);if(!ph)return;if(ph.plan===plan){this.toast('Already on this plan','warn');return;}await apiPut('/pharmacies/'+ph.id,{...ph,plan,planExpiry:'2027-04-19'});ph.plan=plan;ph.planExpiry='2027-04-19';this.toast('Plan updated to ₹'+plan+'/mo!','ok');this.nav('subscriptions');
+
+  subscribePlan(plan){
+    const ph=this.data.pharmacies.find(p=>p.id===this.st.user.phId);if(!ph)return;
+    if(ph.plan===plan){this.toast('Already on this plan','warn');return;}
+    const amt=parseInt(plan);const upi=this.data.dist?.upi||'pharmadist@okicici';
+    const name=encodeURIComponent('PharmaDist Pro');const note=encodeURIComponent('Subscription '+plan+'/mo - '+ph.name);
+    const upiLink=`upi://pay?pa=${encodeURIComponent(upi)}&pn=${name}&am=${amt}&cu=INR&tn=${note}`;
+    const gpay=`gpay://upi/pay?pa=${encodeURIComponent(upi)}&pn=${name}&am=${amt}&cu=INR&tn=${note}`;
+    const phonepe=`phonepe://pay?pa=${encodeURIComponent(upi)}&pn=${name}&am=${amt}&cu=INR&tn=${note}`;
+    const paytm=`paytmmp://pay?pa=${encodeURIComponent(upi)}&pn=${name}&am=${amt}&cu=INR&tn=${note}`;
+    const planLabel=plan==='1500'?'Premium':'Basic';
+    const expiry=new Date(Date.now()+365*864e5).toLocaleDateString('en-CA');
+    // Store pending plan info for confirmation
+    this._pendingSubPlan={plan,amt,expiry,phId:ph.id,phName:ph.name};
+    this._subUPIOpened=false;
+    const body=`
+      <div style="text-align:center;padding:10px 0 16px">
+        <div style="display:inline-flex;align-items:center;gap:9px;padding:7px 18px;background:linear-gradient(135deg,rgba(108,99,255,.15),rgba(0,212,255,.1));border:1px solid rgba(108,99,255,.3);border-radius:99px;margin-bottom:16px">
+          <span class="material-icons-round" style="color:var(--acc);font-size:18px">card_membership</span>
+          <span style="font-weight:700;color:var(--acc)">${planLabel} Plan — ₹${amt}/month</span>
+        </div>
+        <div style="font-size:.82rem;color:var(--txt2);margin-bottom:16px">Valid for 12 months · Activates after payment verification</div>
+        <div id="sub-qr" style="background:#fff;border-radius:12px;width:168px;height:168px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center"></div>
+        <div style="font-size:.75rem;color:var(--mute);margin-bottom:4px">Pay to UPI ID</div>
+        <div style="font-family:monospace;font-weight:700;color:var(--acc);font-size:1rem;margin-bottom:16px">${upi}</div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:20px">
+          <a href="${gpay}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#1a73e8;color:#fff;border-radius:9px;font-weight:700;font-size:.875rem;text-decoration:none" onclick="A._subUPIOpened=true;setTimeout(()=>A._showSubConfirm(),800)">
+            <span class="material-icons-round" style="font-size:17px">payments</span>GPay
+          </a>
+          <a href="${phonepe}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#5f259f;color:#fff;border-radius:9px;font-weight:700;font-size:.875rem;text-decoration:none" onclick="A._subUPIOpened=true;setTimeout(()=>A._showSubConfirm(),800)">
+            <span class="material-icons-round" style="font-size:17px">phone_iphone</span>PhonePe
+          </a>
+          <a href="${paytm}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#00b9f1;color:#fff;border-radius:9px;font-weight:700;font-size:.875rem;text-decoration:none" onclick="A._subUPIOpened=true;setTimeout(()=>A._showSubConfirm(),800)">
+            <span class="material-icons-round" style="font-size:17px">account_balance_wallet</span>Paytm
+          </a>
+          <a href="${upiLink}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:rgba(255,255,255,.08);color:var(--txt);border:1px solid var(--bdr);border-radius:9px;font-weight:700;font-size:.875rem;text-decoration:none" onclick="A._subUPIOpened=true;setTimeout(()=>A._showSubConfirm(),800)">
+            <span class="material-icons-round" style="font-size:17px">open_in_new</span>Any UPI App
+          </a>
+        </div>
+        <div id="sub-confirm-section" style="display:none;border-top:1px solid var(--bdr);padding-top:16px;text-align:left">
+          <div style="font-size:.78rem;color:var(--ok);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px"><span class="material-icons-round" style="font-size:16px">check_circle</span>App opened! Enter your payment details to confirm:</div>
+          <div class="fg" style="margin-bottom:10px"><label>UTR / Transaction Reference Number *</label><input id="sub-utr" type="text" inputmode="numeric" maxlength="24" placeholder="12-digit UTR from your UPI app" oninput="A._validateSubUTR()"></div>
+          <div class="fg" style="margin-bottom:10px"><label>UPI Transaction ID *</label><input id="sub-txnid" type="text" maxlength="32" placeholder="e.g. T2604281234XXXX" oninput="A._validateSubUTR()"></div>
+          <div id="sub-val-hint" style="font-size:.72rem;color:var(--err);margin-bottom:10px;display:none">⚠ UTR must be at least 12 digits · TXN ID at least 8 characters</div>
+          <button id="sub-confirm-btn" class="btn btn-ok" style="width:100%;justify-content:center" disabled onclick="A._confirmSubPayment()">
+            <span class="material-icons-round">verified</span>Confirm Payment & Submit for Verification
+          </button>
+        </div>
+        <button class="btn btn-s" style="margin-top:12px;width:100%;justify-content:center;font-size:.82rem" onclick="A._subUPIOpened=true;A._showSubConfirm()">
+          <span class="material-icons-round" style="font-size:16px">receipt_long</span>I've already paid — Enter UTR manually
+        </button>
+      </div>`;
+    this.showModal('Pay for '+planLabel+' Plan',body,'','mdl-lg');
+    // Generate QR code
+    setTimeout(()=>{
+      const el=Q('#sub-qr');if(!el)return;
+      try{new QRCode(el,{text:upiLink,width:160,height:160,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M});}catch(e){el.innerHTML='<div style="color:#666;font-size:.72rem;padding:20px">Scan QR in any UPI app</div>';}
+    },100);
+  },
+
+  _showSubConfirm(){
+    const s=Q('#sub-confirm-section');if(s)s.style.display='block';
+    Q('#sub-utr')?.focus();
+  },
+
+  _validateSubUTR(){
+    const utr=(Q('#sub-utr')?.value||'').replace(/\D/g,'');
+    const txn=(Q('#sub-txnid')?.value||'').trim();
+    const ok=utr.length>=12&&txn.length>=8;
+    const btn=Q('#sub-confirm-btn');if(btn)btn.disabled=!ok;
+    const hint=Q('#sub-val-hint');if(hint)hint.style.display=ok?'none':'block';
+  },
+
+  async _confirmSubPayment(){
+    const utr=(Q('#sub-utr')?.value||'').trim();
+    const txn=(Q('#sub-txnid')?.value||'').trim();
+    if(!utr||!txn){this.toast('Enter UTR and TXN ID','err');return;}
+    const p=this._pendingSubPlan;if(!p)return;
+    const btn=Q('#sub-confirm-btn');
+    if(btn){btn.disabled=true;btn.innerHTML='<span class="material-icons-round spin">autorenew</span>Submitting…';}
+    // Save as a subscription bill with pending_verification status
+    const bill={phId:p.phId,phName:p.phName,ordId:'SUB-'+Date.now(),amt:p.amt,date:new Date().toLocaleDateString('en-CA'),due:new Date().toLocaleDateString('en-CA'),type:'subscription',subPlan:p.plan,planExpiry:p.expiry,utr,txnId:txn};
+    const res=await apiPost('/bills',bill);
+    if(res?.ok){
+      bill.id=res.id;bill.status='pending_verification';bill.paid=null;
+      this.data.bills.push(bill);
+      // Notify admin
+      await this.addNotif('payment','💳 Subscription payment from '+p.phName+' — ₹'+p.amt+'/mo (UTR: '+utr+')',true);
+      this.closeModal();
+      this.toast('✅ Payment submitted! Admin will verify within 24 hrs.','ok');
+      this.nav('subscriptions');
+    } else {
+      if(btn){btn.disabled=false;btn.innerHTML='<span class="material-icons-round">verified</span>Confirm Payment & Submit for Verification';}
+      this.toast('Submission failed — try again','err');
+    }
+  },
+
+  // Admin: verify & activate subscription payment
+  async verifySubPayment(billId){
+    const b=this.data.bills.find(x=>x.id===billId);if(!b)return;
+    const ph=this.data.pharmacies.find(p=>p.id===b.phId);if(!ph)return;
+    const paid=new Date().toLocaleDateString('en-CA');
+    const res=await apiPut('/bills/'+billId,{status:'paid',paid});
+    if(res?.ok){
+      b.status='paid';b.paid=paid;
+      // Activate the plan
+      await apiPut('/pharmacies/'+ph.id,{...ph,plan:b.subPlan,planExpiry:b.planExpiry||'2027-04-28'});
+      ph.plan=b.subPlan;ph.planExpiry=b.planExpiry||'2027-04-28';
+      await this.addNotif('payment','🎉 Your '+b.subPlan+'/mo plan is now ACTIVE!',false,ph.id);
+      this.toast('✅ Plan activated for '+ph.name,'ok');
+      this.nav('billing');
+    } else { this.toast('Verification failed','err'); }
   },
 
   // ===== PHARMACY RETURNS =====
