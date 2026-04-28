@@ -1194,36 +1194,81 @@ const A = {
   _afterUPIOpen(id){
     const b=this.data.bills.find(b=>b.id===id);if(!b)return;
     const rupee='\u20b9';
-    // STEP 2 — confirm payment with optional UTR
-    const body=`<div style="text-align:center;margin-bottom:16px">
-      <span class="material-icons-round" style="font-size:48px;color:var(--ok)">check_circle</span>
-      <div style="font-weight:700;font-size:1.1rem;color:var(--txt);margin-top:6px">Payment Sent?</div>
-      <div style="font-size:.82rem;color:var(--mute);margin-top:4px">Amount: <strong style="color:var(--acc)">${rupee}${this.fmt(b.amt)}</strong> &bull; ${b.id}</div>
+    const body=`<div style="text-align:center;margin-bottom:18px">
+      <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#00D48E,#1a73e8);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;box-shadow:0 4px 18px rgba(0,180,120,.4)">
+        <span class="material-icons-round" style="font-size:30px;color:#fff">payments</span>
+      </div>
+      <div style="font-weight:800;font-size:1.1rem;color:var(--txt)">Payment Details</div>
+      <div style="font-size:.8rem;color:var(--mute);margin-top:4px">Amount paid: <strong style="color:var(--acc)">${rupee}${this.fmt(b.amt)}</strong> &bull; ${b.id}</div>
     </div>
-    <div class="fg"><label>UTR / Transaction ID <span style="color:var(--mute);font-weight:400">(optional but recommended)</span></label>
-      <input id="ptr" placeholder="e.g. 427812345678" style="font-family:monospace"></div>`;
-    const foot=`<button class="btn btn-s" onclick="A.payBill('${id}')">← Back</button>
-      <button class="btn btn-ok" style="flex:1;justify-content:center" onclick="A.submitUTR('${id}')">
-        <span class="material-icons-round">verified</span>Confirm Payment
-      </button>`;
+
+    <div class="fg">
+      <label style="display:flex;align-items:center;justify-content:space-between">
+        <span>UTR Number <span style="color:var(--err)">*</span></span>
+        <span id="utr-hint" style="font-size:.72rem;color:var(--mute)">Min 12 digits</span>
+      </label>
+      <input id="utr-inp" type="tel" inputmode="numeric" placeholder="e.g. 427812345678"
+        style="font-family:monospace;letter-spacing:2px;font-size:1.05rem"
+        maxlength="22"
+        oninput="A._validatePayFields()">
+      <div style="font-size:.72rem;color:var(--mute);margin-top:4px">
+        📌 Find in GPay: ☰ → Transactions → this payment → UTR No.
+      </div>
+    </div>
+
+    <div class="fg" style="margin-top:10px">
+      <label style="display:flex;align-items:center;justify-content:space-between">
+        <span>Transaction / Ref ID <span style="color:var(--err)">*</span></span>
+        <span id="txn-hint" style="font-size:.72rem;color:var(--mute)">Min 8 characters</span>
+      </label>
+      <input id="txn-inp" type="text" placeholder="e.g. GPay Ref / PhonePe TXN ID"
+        style="font-family:monospace"
+        maxlength="40"
+        oninput="A._validatePayFields()">
+      <div style="font-size:.72rem;color:var(--mute);margin-top:4px">
+        📌 Find in PhonePe / Paytm: History → this payment → Transaction ID
+      </div>
+    </div>
+
+    <div id="pay-continue-wrap" style="margin-top:18px;display:none">
+      <button id="pay-continue-btn" onclick="A.submitUTR('${id}')"
+        style="width:100%;padding:15px;border:none;border-radius:12px;cursor:pointer;font-family:inherit;font-weight:800;font-size:1rem;letter-spacing:.3px;
+               background:linear-gradient(135deg,#00D48E,#1a73e8);color:#fff;
+               display:flex;align-items:center;justify-content:center;gap:10px;
+               box-shadow:0 6px 24px rgba(0,180,120,.45);transition:.2s">
+        <span class="material-icons-round">verified</span>
+        Confirm Payment
+      </button>
+    </div>`;
+    const foot=`<button class="btn btn-s" onclick="A.payBill('${id}')">← Back</button>`;
     this.showModal('Confirm Payment',body,foot,'mdl-sm');
   },
 
-  async submitUTR(id){
-    const utr=(Q('#ptr')?.value||'').trim()||'UPI-'+Date.now();
-    const b=this.data.bills.find(b=>b.id===id);if(!b)return;
-    // Update bill instantly for pharmacy
-    b.status='pending_verification';b.utr=utr;b.payMethod='UPI';
-    await apiPut('/bills/'+id,{status:'pending_verification',utr,payMethod:'UPI'});
-    // Notify admin with verify button
-    this.addNotif('payment','\ud83d\udcb0 Payment received for '+id+' \u2013 '+b.phName+' paid \u20b9'+this.fmt(b.amt)+'. Click to verify.',true);
-    // Notify pharmacy
-    this.addNotif('payment','Payment submitted for '+id+'. Awaiting admin confirmation.',false,b.phId);
-    this.closeModal();
-    this.toast('Payment confirmed! \u2705','ok','Admin has been notified to verify your payment');
-    this.nav('billing');
+  _validatePayFields(){
+    const utr=(Q('#utr-inp')?.value||'').replace(/\D/g,'');
+    const txn=(Q('#txn-inp')?.value||'').trim();
+    const utrOk=utr.length>=12;
+    const txnOk=txn.length>=8;
+    // Update hints
+    const uh=Q('#utr-hint'); if(uh) uh.textContent=utrOk?'✅ Valid':'Min 12 digits ('+utr.length+'/12)'; if(uh) uh.style.color=utrOk?'var(--ok)':'var(--mute)';
+    const th=Q('#txn-hint'); if(th) th.textContent=txnOk?'✅ Valid':'Min 8 chars ('+txn.length+'/8)'; if(th) th.style.color=txnOk?'var(--ok)':'var(--mute)';
+    // Show/hide continue button
+    const wrap=Q('#pay-continue-wrap');
+    if(wrap) wrap.style.display=(utrOk&&txnOk)?'block':'none';
   },
 
+  async submitUTR(id){
+    const utr=(Q('#utr-inp')?.value||'').replace(/\D/g,'').trim();
+    const txn=(Q('#txn-inp')?.value||'').trim();
+    const b=this.data.bills.find(b=>b.id===id);if(!b)return;
+    b.status='pending_verification';b.utr=utr;b.txnId=txn;b.payMethod='UPI';
+    await apiPut('/bills/'+id,{status:'pending_verification',utr,txnId:txn,payMethod:'UPI'});
+    this.addNotif('payment','\ud83d\udcb0 Payment received for '+id+' \u2013 '+b.phName+' paid \u20b9'+this.fmt(b.amt)+'. UTR: '+utr+'. Click to verify.',true);
+    this.addNotif('payment','Payment submitted for '+id+'. Awaiting admin confirmation.',false,b.phId);
+    this.closeModal();
+    this.toast('Payment submitted! \u2705','ok','Admin has been notified to verify');
+    this.nav('billing');
+  },
   async confirmPay(id){
     const b=this.data.bills.find(b=>b.id===id);if(!b)return;
     const paid=new Date().toLocaleDateString('en-CA');
