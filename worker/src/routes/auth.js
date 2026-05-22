@@ -2,6 +2,17 @@
 import { uid, hash, signJWT, dbGet, dbAll, dbRun, auditLog, sendMail, json, err } from '../utils.js';
 import { authMiddleware } from '../middleware.js';
 
+// ── JWT secret helper (production-safe) ──────────────────────
+function getJwtSecret(env) {
+  const secret = env.JWT_SECRET;
+  if (!secret) {
+    const isProd = (env.NODE_ENV || 'production') === 'production';
+    if (isProd) return null;
+    return 'pharmadist_jwt_secret_dev_only_not_for_production';
+  }
+  return secret;
+}
+
 export function registerAuthRoutes(app) {
 
   // ── Login ────────────────────────────────────────────────────
@@ -12,7 +23,8 @@ export function registerAuthRoutes(app) {
     const pw = password.trim();
     if (!em || !pw) return err('Email and password are required.');
     const db = c.env.DB;
-    const JWT_SECRET = c.env.JWT_SECRET || 'pharmadist_jwt_secret_2026_change_in_production!';
+    const JWT_SECRET = getJwtSecret(c.env);
+    if (!JWT_SECRET) return err('Server misconfiguration: JWT_SECRET is not set.', 500);
 
     let userData;
     if (role === 'admin') {

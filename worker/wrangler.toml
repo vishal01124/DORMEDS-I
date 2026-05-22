@@ -12,13 +12,14 @@ database_name = "pharmadist-db"
 database_id = "7c635caf-204f-43b9-8702-2be65227d5a8"
 
 [vars]
-APP_URL = "https://pharmadist-pro.pages.dev"
+APP_URL = "https://pharmadist-app.pages.dev"
 NODE_ENV = "production"
 
 [triggers]
 crons = ["0 2 * * *"]
 
-# Secrets (set via: wrangler secret put SECRET_NAME)
+# Secrets (set via: node scripts/set-secrets.js)
+# Or manually: wrangler secret put SECRET_NAME
 # JWT_SECRET
 # ADMIN_EMAIL
 # ADMIN_PASSWORD

@@ -30,7 +30,8 @@ export function registerOperationsRoutes(app) {
     if (!token) return new Response('Unauthorized', { status: 401 });
     try {
       const { verifyJWT } = await import('../utils.js');
-      const JWT_SECRET = c.env.JWT_SECRET || 'pharmadist_jwt_secret_2026_change_in_production!';
+      const JWT_SECRET = c.env.JWT_SECRET;
+      if (!JWT_SECRET) return new Response('Server misconfiguration: JWT_SECRET is not set.', { status: 500 });
       const user = await verifyJWT(token, JWT_SECRET);
       const { readable, writable } = new TransformStream();
       const writer = writable.getWriter();

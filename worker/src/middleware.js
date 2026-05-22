@@ -2,14 +2,28 @@
 import { verifyJWT } from './utils.js';
 import { dbGet } from './utils.js';
 
+// ── Resolve JWT secret safely ───────────────────────────────
+// In production, if JWT_SECRET is not set as a Worker secret,
+// we refuse to proceed rather than fall back to a known string.
+function getJwtSecret(env) {
+  const secret = env.JWT_SECRET;
+  if (!secret) {
+    const isProd = (env.NODE_ENV || 'production') === 'production';
+    if (isProd) return null; // caller must handle this as 500
+    return 'pharmadist_jwt_secret_dev_only_not_for_production';
+  }
+  return secret;
+}
+
 // Auth middleware — sets c.set('user', payload)
 export async function authMiddleware(c, next) {
   const auth = c.req.header('authorization') || '';
   const tokenParam = new URL(c.req.url).searchParams.get('token');
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : tokenParam;
   if (!token) return c.json({ ok: false, msg: 'Authentication required. Please sign in.' }, 401);
+  const JWT_SECRET = getJwtSecret(c.env);
+  if (!JWT_SECRET) return c.json({ ok: false, msg: 'Server misconfiguration: JWT_SECRET is not set.' }, 500);
   try {
-    const JWT_SECRET = c.env.JWT_SECRET || 'pharmadist_jwt_secret_2026_change_in_production!';
     const decoded = await verifyJWT(token, JWT_SECRET);
     // Check session not revoked
     const session = await dbGet(c.env.DB,
